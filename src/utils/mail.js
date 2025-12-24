@@ -293,3 +293,16 @@ export async function sendCertificateEmail({ toEmail, recipientName, certificate
     ]
   });
 }
+//for signup otp email
+export const sendSignupOtpEmail = async ({ toEmail, fullName, otp }) => {
+  await transporter.sendMail({
+    to: toEmail,
+    subject: "Verify your email - Orbosis Foundation",
+    html: `
+      <p>Hello ${fullName},</p>
+      <p>Your email verification OTP is:</p>
+      <h2>${otp}</h2>
+      <p>This OTP is valid for 10 minutes.</p>
+    `,
+  });
+};

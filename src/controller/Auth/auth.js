@@ -894,6 +894,7 @@ import { getLocalFileUrl } from "../../utils/multer.js";
 import { uploadToCloudinary } from "../../utils/uploader.js";
 import { sendVolunteerWelcomeEmail, sendMemberWelcomeEmail, sendPasswordResetOtpEmail, sendContactUsEmail } from "../../utils/mail.js";
 import Donation from "../../model/Donation/donation.js";
+import { sendSignupOtpEmail } from "../../utils/mail.js";
 
 
 
@@ -1650,4 +1651,165 @@ export const resetPassword = async (req, res) => {
     } catch (err) {
         return res.status(500).json({ message: err.message });
     }
+};
+// ================= Signup with OTP ================= //       
+
+
+export const sendSignupOtp = async (req, res) => {
+  try {
+    const { fullName, email, role } = req.body;
+
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      return res.status(400).json({
+        message: "Invalid email address",
+      });
+    }
+
+    // 🔴 SIGNUP CASE: user should NOT exist
+    let user = await User.findOne({ email });
+
+    if (user && user.emailVerified) {
+      return res.status(400).json({
+        message: "Email already registered",
+      });
+    }
+
+    if (!user) {
+      user = new User({
+        fullName,
+        email,
+        role,
+      });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    user.signupOtp = otp;
+    user.signupOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    user.emailVerified = false;
+
+    await user.save();
+
+    await sendSignupOtpEmail({
+      toEmail: email,
+      fullName: fullName,
+      otp,
+    });
+
+    return res.status(200).json({
+      message: "OTP sent successfully",
+    });
+
+  } catch (err) {
+    console.error("SEND SIGNUP OTP ERROR:", err);
+    return res.status(500).json({ message: "Failed to send OTP" });
+  }
+};
+
+export const verifySignupOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user || !user.signupOtp) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    if (user.signupOtp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    if (new Date() > user.signupOtpExpiresAt) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    user.signupOtp = undefined;
+    user.signupOtpExpiresAt = undefined;
+    user.emailVerified = true;
+
+    await user.save();
+
+    return res.status(200).json({ message: "OTP verified successfully" });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+//phone otp verification 
+export const sendPhoneOtp = async (req, res) => {
+  try {
+    const { contactNumber } = req.body;
+
+    // ✅ BASIC VALIDATION
+    if (!contactNumber || !/^[6-9]\d{9}$/.test(contactNumber)) {
+      return res.status(400).json({
+        message: "Invalid mobile number",
+      });
+    }
+
+    const user = await User.findOne({ contactNumber });
+
+    // ❌ USER MUST EXIST
+    if (!user) {
+      return res.status(400).json({
+        message: "Mobile number not registered",
+      });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.phoneOtp = otp;
+    user.phoneOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    user.phoneVerified = false;
+
+    await user.save();
+
+    console.log("📲 PHONE OTP:", otp);
+
+    return res.status(200).json({
+      message: "OTP sent successfully",
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+
+export const verifyPhoneOtp = async (req, res) => {
+  try {
+    const { contactNumber, otp } = req.body;
+
+    if (!contactNumber || !otp) {
+      return res.status(400).json({ message: "Contact number & OTP required" });
+    }
+
+    const user = await User.findOne({ contactNumber });
+
+    if (!user || !user.phoneOtp) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    if (user.phoneOtp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    if (new Date() > user.phoneOtpExpiresAt) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    user.phoneOtp = undefined;
+    user.phoneOtpExpiresAt = undefined;
+    user.phoneVerified = true;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Phone verified successfully",
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 };

@@ -1,5 +1,5 @@
 import express from "express";
-import { register, login, changePassword, forgotPassword, verifyResetOtp, resetPassword, contactUs, createVolunteerByAdmin, createMemberByAdmin, getAllVolunteers, getAllMembers, givenCerification, getCertificateByMemberDetails, getAllCertification, getAdminDashboard, getRecentActivity, getUserDetails, updateUserDetails } from "../../controller/Auth/auth.js";
+import { verifyPhoneOtp,sendPhoneOtp,sendSignupOtp, verifySignupOtp,register, login, changePassword, forgotPassword, verifyResetOtp, resetPassword, contactUs, createVolunteerByAdmin, createMemberByAdmin, getAllVolunteers, getAllMembers, givenCerification, getCertificateByMemberDetails, getAllCertification, getAdminDashboard, getRecentActivity, getUserDetails, updateUserDetails } from "../../controller/Auth/auth.js";
 import { requireAuth, requireAdmin, requireAdminOrVolunteer } from "../../middleware/auth.js";
 import { upload, pdfUpload, cloudinaryUpload, cloudinaryPdfUpload, cloudinaryImageUpload, cloudinaryMixedUpload } from "../../utils/multer.js";
 
@@ -21,10 +21,16 @@ authRouter.get("/", (req, res) => {
   });
 });
 
-authRouter.post("/register", register);
+// authRouter.post("/register", register);
+authRouter.post("/signup/create-password", register);
 
+authRouter.post("/signup/send-otp", sendSignupOtp);
+authRouter.post("/signup/verify-otp", verifySignupOtp);
 
 authRouter.post("/login", login);
+
+authRouter.post("/send-phone-otp", sendPhoneOtp);
+authRouter.post("/verify-phone-otp", verifyPhoneOtp);
 
 // Change password (Authenticated user)
 authRouter.post("/changePassword", changePassword);
