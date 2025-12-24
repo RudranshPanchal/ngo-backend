@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>{{ngoName}} – Audit Report</title>
+
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 16mm;
+
+      @top-center {
+        content: element(pageHeader);
+      }
+    }
+
+    #pageHeader {
+      position: running(pageHeader);
+    }
+
+    body {
+      font-family: Calibri, Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.55;
+      word-wrap: break-word;
+    }
+
+    /* ===== HEADER ===== */
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .ca-logo {
+      width: 155px !important;
+      max-width: 155px;
+      min-width: 155px;
+      height: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    .firm-info {
+      text-align: right;
+      font-size: 15px;
+      max-width: 50%;
+      line-height: 1.35 !important;
+      word-break: break-word;
+    }
+
+    .firm-info p,
+    h3 {
+      margin: 3px 0 !important;
+      line-height: 1.35 !important;
+    }
+
+    .divider {
+      border: none;
+      border-top: 2px solid #003366;
+      margin: 4px 0 16px 0;
+    }
+
+    /* ===== COVER PAGE ===== */
+    .cover-page {
+      text-align: center;
+      margin-top: 140px;
+      page-break-after: always;
+    }
+
+    .cover-title {
+      font-size: 34px;
+      font-weight: bold;
+      color: #003366;
+    }
+
+    .cover-sub {
+      font-size: 18px;
+      margin-top: 6px;
+      color: #555;
+    }
+
+    /* ===== CONTENT ===== */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      page-break-inside: avoid;
+    }
+
+    th,
+    td {
+      border: 1px solid #444;
+      padding: 6px 8px;
+    }
+
+    th {
+      background: #eef4ff;
+    }
+
+    /* ===== SIGNATURE ===== */
+    .signature {
+      margin-top: 20px;
+      page-break-inside: avoid;
+    }
+
+    .signature-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      width: 100%;
+    }
+
+    .sig-box {
+      text-align: right;
+      width: 47%;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+/* 
+    .sig-box.right {
+      text-align: right;
+    } */
+
+    .sig-box.left p{
+      text-align: left;
+    }
+
+    .signature-img {
+      width: 180px;
+      height: auto;
+      margin: 10px 0;
+    }
+
+    .signature-placeholder {
+      width: 180px;
+      /* Same width as signature image */
+      height: 80px;
+      /* Reserve space for signature */
+      margin: 10px 0;
+      border-bottom: 1px solid #000;
+      /* Optional: line for manual signature */
+    }
+
+    .sig-box.right .signature-placeholder,
+    .sig-box.right img.signature-img {
+      display: block;
+      margin-left: auto;
+      width: 180px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER ON EVERY PAGE -->
+  <div id="pageHeader">
+    <div class="header-bar">
+      <img class="ca-logo" src="{{caLogoBase64}}" alt="CA Logo" />
+      <div class="firm-info">
+        <b>CA {{auditorName}}</b><br>
+        <b>{{firmName}}</b><br>
+        Chartered Accountant – Statutory Auditor<br>
+        {{firmAddress}}<br>
+        FRN / Membership No.: {{membershipNumber}}
+      </div>
+    </div>
+    <hr class="divider" />
+  </div>
+
+  <!-- COVER PAGE -->
+  <div class="cover-page">
+    <h1 class="cover-title">{{ngoName}}</h1>
+    <p class="cover-sub">ANNUAL AUDIT REPORT – {{financialYear}}</p>
+    <p class="cover-sub">{{financialYearStart}} → {{financialYearEnd}}</p>
+    <p class="cover-sub">Prepared by: CA {{auditorName}}</p>
+    <p class="cover-sub">Date: {{date}}</p>
+  </div>
+
+  <!-- FULL AI CONTENT -->
+  <div class="content">
+    {{{reportHTML}}}
+  </div>
+
+  <!-- SIGNATURE PAGE -->
+  <div class="signature page-break">
+    <div class="signature-row">
+      <!-- LEFT: President -->
+      <div class="sig-box left">
+        <p><strong>For: {{ngoName}}</strong></p>
+        <p><b>{{presidentName}}</b></p>
+        <p>(President)</p>
+        <!-- Placeholder for signature -->
+        {{#if presidentSigBase64}}
+        <img src="{{presidentSigBase64}}" class="signature-img" />
+        {{else}}
+        <div class="signature-placeholder"></div>
+        {{/if}}
+        <p><b>Authorized Signature</b></p>
+        <p>Date: {{presidentDate}}</p>
+      </div>
+
+      <!-- RIGHT: Auditor -->
+      <div class="sig-box right">
+        <p><i>As per our report of even date</i></p>
+        <p><strong>For {{firmName}}</strong></p>
+        <p>(Chartered Accountants)</p>
+        <!-- Placeholder for signature -->
+        {{#if auditorSigBase64}}
+        <img src="{{auditorSigBase64}}" class="signature-img" />
+        {{else}}
+        <div class="signature-placeholder"></div>
+        {{/if}}
+        <p><b>CA {{auditorName}}</b></p>
+        <p>(Partner)</p>
+        <p>MRN No.: {{membershipNumber}}</p>
+        <p>Date: {{auditorDate}}</p>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
+
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ngoName}} - Audit Report</title>
+
+<style>
+  @page { size: A4; margin: 22mm; }
+
+  body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    font-size: 13px;
+    color: #222;
+  }
+
+  .cover {
+    padding-top: 140px;
+    text-align: center;
+  }
+
+  .cover h1 {
+    font-size: 32px;
+    font-weight: bold;
+    color: #0d47a1;
+  }
+
+  .cover p {
+    font-size: 16px;
+    color: #555;
+  }
+
+  .section-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #0d47a1;
+    border-left: 6px solid #0d47a1;
+    padding-left: 8px;
+    margin-top: 35px;
+    margin-bottom: 10px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+  }
+
+  th {
+    background: #e3f2fd;
+    padding: 8px;
+    border: 1px solid #b0bec5;
+    font-weight: bold;
+  }
+
+  td {
+    border: 1px solid #cfd8dc;
+    padding: 8px;
+    word-wrap: break-word;
+  }
+
+  .page-break { page-break-after: always; }
+</style>
+
+</head>
+<body>
+
+<div class="cover page-break">
+  <h1>{{ngoName}}<br>Annual Audit Report</h1>
+  <p>Financial Year: {{financialYear}}</p>
+  <p>Period: {{financialYearStart}} to {{financialYearEnd}}</p>
+  <p>Prepared By: {{auditorName}}</p>
+  <p>Date: {{date}}</p>
+</div>
+
+<div class="content">
+  {{{reportHTML}}}
+</div>
+
+</body>
+</html> -->

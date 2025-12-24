@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Dummy Data</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { padding: 10px 20px; background: #6b21a8; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #553285; }
+        #output { margin-top: 20px; padding: 10px; background: #f5f5f5; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>NGO Database - Add Dummy Data</h1>
+    <p>Click the button below to add dummy users to the database:</p>
+    <button onclick="addDummyData()">Add Dummy Data</button>
+    <div id="output"></div>
+
+    <script>
+        const API_BASE = 'https://orbosisngo-backend-35v5.onrender.com/api';
+        
+        const dummyUsers = [
+            {
+                name: 'Priya Sharma',
+                email: 'priya.sharma@example.com',
+                password: 'password123',
+                role: 'volunteer'
+            },
+            {
+                name: 'Rahul Kumar', 
+                email: 'rahul.kumar@example.com',
+                password: 'password123',
+                role: 'volunteer'
+            },
+            {
+                name: 'Anita Patel',
+                email: 'anita.patel@example.com', 
+                password: 'password123',
+                role: 'donor'
+            },
+            {
+                name: 'Admin User',
+                email: 'admin@orbosis.org',
+                password: 'password123', 
+                role: 'admin'
+            }
+        ];
+
+        async function addDummyData() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<p>Adding dummy users...</p>';
+            
+            let results = [];
+            
+            for (const user of dummyUsers) {
+                try {
+                    const response = await fetch(`${API_BASE}/auth/register`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(user)
+                    });
+                    
+                    const result = await response.json();
+                    if (response.ok && result.success) {
+                        results.push(`✅ Created user: ${user.email}`);
+                    } else {
+                        results.push(`❌ Failed to create user: ${user.email} - ${result.message || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    results.push(`❌ Failed to create user: ${user.email} - ${error.message}`);
+                }
+            }
+            
+            output.innerHTML = `
+                <h3>Results:</h3>
+                ${results.map(r => `<p>${r}</p>`).join('')}
+                <h3>Login Credentials:</h3>
+                <p><strong>Admin:</strong> admin@orbosis.org / password123</p>
+                <p><strong>Volunteer:</strong> priya.sharma@example.com / password123</p>
+                <p><strong>Donor:</strong> anita.patel@example.com / password123</p>
+            `;
+        }
+    </script>
+</body>
+</html>
