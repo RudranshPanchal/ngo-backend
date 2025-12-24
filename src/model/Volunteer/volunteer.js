@@ -8,7 +8,7 @@ const volunteerSchema = new mongoose.Schema({
     contactNumber: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     address: { type: String },
-    skills: { type: String },
+    skills: { type: [String] },
     profession: { type: String },
     areaOfVolunteering: {
         type: String,
