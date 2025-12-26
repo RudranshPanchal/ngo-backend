@@ -1,5 +1,5 @@
 import express from "express";
-import { verifyPhoneOtp,sendPhoneOtp,sendSignupOtp, verifySignupOtp,register, login, changePassword, forgotPassword, verifyResetOtp, resetPassword, contactUs, createVolunteerByAdmin, createMemberByAdmin, getAllVolunteers, getAllMembers, givenCerification, getCertificateByMemberDetails, getAllCertification, getAdminDashboard, getRecentActivity, getUserDetails, updateUserDetails } from "../../controller/Auth/auth.js";
+import { verifyPhoneOtp, sendPhoneOtp, sendSignupOtp, verifySignupOtp, register, login, changePassword, forgotPassword, verifyResetOtp, resetPassword, contactUs, createVolunteerByAdmin, createMemberByAdmin, getAllVolunteers, getAllMembers, givenCerification, getCertificateByMemberDetails, getAllCertification, getAdminDashboard, getRecentActivity, getUserDetails, updateUserDetails, sendEmailVerificationOtp, verifyEmailVerificationOtp, getMe, sendPhoneVerificationOtp, verifyPhoneVerificationOTP } from "../../controller/Auth/auth.js";
 import { requireAuth, requireAdmin, requireAdminOrVolunteer } from "../../middleware/auth.js";
 import { upload, pdfUpload, cloudinaryUpload, cloudinaryPdfUpload, cloudinaryImageUpload, cloudinaryMixedUpload } from "../../utils/multer.js";
 
@@ -27,10 +27,22 @@ authRouter.post("/signup/create-password", register);
 authRouter.post("/signup/send-otp", sendSignupOtp);
 authRouter.post("/signup/verify-otp", verifySignupOtp);
 
-authRouter.post("/login", login);
-
 authRouter.post("/send-phone-otp", sendPhoneOtp);
 authRouter.post("/verify-phone-otp", verifyPhoneOtp);
+
+// User login
+authRouter.post("/login", login);
+
+// Logged In Email verification OTP
+authRouter.post("/send-email-verification-otp", requireAuth, sendEmailVerificationOtp);
+authRouter.post("/verify-email-verification-otp", requireAuth, verifyEmailVerificationOtp);
+
+// Logged In Email verification OTP
+authRouter.post("/send-phone-verification-otp", requireAuth, sendPhoneVerificationOtp);
+authRouter.post("/verify-phone-verification-otp", requireAuth, verifyPhoneVerificationOTP);
+
+// User Refresh
+authRouter.get("/me", requireAuth, getMe);
 
 // Change password (Authenticated user)
 authRouter.post("/changePassword", changePassword);

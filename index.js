@@ -413,7 +413,7 @@ app.post('/test-donation', async (req, res) => {
   }
 });
 app.get("/data",async(req,res)=>{
-  console.log("ggggg")
+  console.log("data", req.body)
   res.json({
       message: 'Test donation successful',
     });

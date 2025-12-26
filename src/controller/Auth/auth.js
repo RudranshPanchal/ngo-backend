@@ -892,10 +892,10 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { getLocalFileUrl } from "../../utils/multer.js";
 import { uploadToCloudinary } from "../../utils/uploader.js";
-import { sendVolunteerWelcomeEmail, sendMemberWelcomeEmail, sendPasswordResetOtpEmail, sendContactUsEmail } from "../../utils/mail.js";
+import { sendVolunteerWelcomeEmail, sendMemberWelcomeEmail, sendPasswordResetOtpEmail, sendContactUsEmail, } from "../../utils/mail.js";
 import Donation from "../../model/Donation/donation.js";
 import { sendSignupOtpEmail } from "../../utils/mail.js";
- import SignupOtp from "../../model/SignupOtp/SignupOtp.js";
+import SignupOtp from "../../model/SignupOtp/SignupOtp.js";
 import PhoneOtp from "../../model/PhoneOtp/PhoneOtp.js";
 
 
@@ -916,19 +916,19 @@ import PhoneOtp from "../../model/PhoneOtp/PhoneOtp.js";
 
 //         // Create new user
 //         const user = await User.create({
-            // fullName,
-            // email,
-            // password: hash,
-            // role: role || 'donor',
-            // memberId,
-            // organisationName: req.body.organisationName || "",
-            // contactNumber: req.body.contactNumber || "",
-            // address: req.body.address || "",
-            // area: req.body.area || "",
-            // state: req.body.state || "",
-            // panNumber: req.body.panNumber || "",
-            // gstNumber: req.body.gstNumber || "",
-                        
+// fullName,
+// email,
+// password: hash,
+// role: role || 'donor',
+// memberId,
+// organisationName: req.body.organisationName || "",
+// contactNumber: req.body.contactNumber || "",
+// address: req.body.address || "",
+// area: req.body.area || "",
+// state: req.body.state || "",
+// panNumber: req.body.panNumber || "",
+// gstNumber: req.body.gstNumber || "",
+
 //         });
 
 //         console.log('✅ User saved:', user);
@@ -945,37 +945,37 @@ import PhoneOtp from "../../model/PhoneOtp/PhoneOtp.js";
 //     }
 // };
 export const register = async (req, res) => {
-  try {
-    const { fullName, email, password, role } = req.body;
+    try {
+        const { fullName, email, password, role } = req.body;
 
-    if (!fullName || !email || !password) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
+        if (!fullName || !email || !password) {
+            return res.status(400).json({ message: "Missing required fields" });
+        }
 
-    // 🔴 CHECK OTP VERIFIED
-    const otpRecord = await SignupOtp.findOne({ email });
+        // 🔴 CHECK OTP VERIFIED
+        const otpRecord = await SignupOtp.findOne({ email });
 
-    if (!otpRecord || otpRecord.verified !== true) {
-      return res.status(400).json({
-        message: "Please verify email first"
-      });
-    }
+        if (!otpRecord || otpRecord.verified !== true) {
+            return res.status(400).json({
+                message: "Please verify email first"
+            });
+        }
 
-    // 🔴 CHECK USER ALREADY EXISTS
-    const existingUser = await User.findOne({ email ,role });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
-    }
+        // 🔴 CHECK USER ALREADY EXISTS
+        const existingUser = await User.findOne({ email, role });
+        if (existingUser) {
+            return res.status(400).json({ message: "User already exists" });
+        }
 
-    const hash = await bcrypt.hash(password, 10);
-    const memberId = "user" + Date.now();
+        const hash = await bcrypt.hash(password, 10);
+        const memberId = "user" + Date.now();
 
-    const user = await User.create({
-      fullName,
-      email,
-      password: hash,
-      role: role || "donor",
-      memberId,
+        const user = await User.create({
+            fullName,
+            email,
+            password: hash,
+            role: role || "donor",
+            memberId,
             organisationName: req.body.organisationName || "",
             contactNumber: req.body.contactNumber || "",
             address: req.body.address || "",
@@ -984,70 +984,70 @@ export const register = async (req, res) => {
             panNumber: req.body.panNumber || "",
             gstNumber: req.body.gstNumber || "",
 
-      // ✅ VERY IMPORTANT
-      emailVerified: true,
-      phoneVerified: false
-    });
+            // ✅ VERY IMPORTANT
+            emailVerified: true,
+            phoneVerified: false
+        });
 
-    // ✅ CLEANUP OTP RECORD
-    await SignupOtp.deleteOne({ email });
+        // ✅ CLEANUP OTP RECORD
+        await SignupOtp.deleteOne({ email });
 
-    return res.status(201).json({
-      message: "Registration successful",
-      user
-    });
+        return res.status(201).json({
+            message: "Registration successful",
+            user
+        });
 
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
+    } catch (err) {
+        return res.status(500).json({ message: err.message });
+    }
 };
 
 export const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const role = req.body.role?.toLowerCase().trim();
-    console.log('Login attempt:', { email, role });
-    if (!email || !password || !role) {
-      return res.status(400).json({ error: 'Email, password, and role are required' });
+    try {
+        const { email, password } = req.body;
+        const role = req.body.role?.toLowerCase().trim();
+        console.log('Login attempt:', { email, role });
+        if (!email || !password || !role) {
+            return res.status(400).json({ error: 'Email, password, and role are required' });
+        }
+
+        const user = await User.findOne({ email, role });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // ✅ SAFE ROLE CHECK
+        if (user.role.toLowerCase() !== role) {
+            console.log(`Role mismatch: user role is ${user.role}, attempted role is ${role}`);
+            return res.status(400).json({ error: 'Role does not match' });
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ error: 'Invalid password' });
+        }
+
+        if (user.tempPassword === true) {
+            return res.status(403).json({
+                error: 'Password change required before proceeding',
+                action: 'redirect_to_change_password',
+            });
+        }
+
+        const token = jwt.sign(
+            { userId: user._id, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '2d' }
+        );
+
+        return res.status(200).json({
+            message: 'Login successful',
+            token,
+        });
+
+    } catch (err) {
+        return res.status(500).json({ error: 'Internal server error' });
     }
-
-    const user = await User.findOne({ email , role });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // ✅ SAFE ROLE CHECK
-    if (user.role.toLowerCase() !== role) {
-        console.log(`Role mismatch: user role is ${user.role}, attempted role is ${role}`);
-      return res.status(400).json({ error: 'Role does not match' });
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Invalid password' });
-    }
-
-    if (user.tempPassword === true) {
-      return res.status(403).json({
-        error: 'Password change required before proceeding',
-        action: 'redirect_to_change_password',
-      });
-    }
-
-    const token = jwt.sign(
-      { userId: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '2d' }
-    );
-
-    return res.status(200).json({
-      message: 'Login successful',
-      token,
-    });
-
-  } catch (err) {
-    return res.status(500).json({ error: 'Internal server error' });
-  }
 };
 
 
@@ -1179,43 +1179,43 @@ export const updateUserDetails = async (req, res) => {
 }
 
 export const changePassword = async (req, res) => {
-  try {
-    const { email, role, oldPassword, newPassword } = req.body;
-    const normalizedRole = role?.toLowerCase().trim();
+    try {
+        const { email, role, oldPassword, newPassword } = req.body;
+        const normalizedRole = role?.toLowerCase().trim();
 
-    if (!email || !role || !oldPassword || !newPassword) {
-      return res.status(400).json({ message: "All fields are required" });
+        if (!email || !role || !oldPassword || !newPassword) {
+            return res.status(400).json({ message: "All fields are required" });
+        }
+
+        const user = await User.findOne({
+            email,
+            role: normalizedRole
+        }).select("+password");
+
+        if (!user) {
+            return res.status(404).json({
+                message: "User not found for this role"
+            });
+        }
+
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
+        if (!isMatch) {
+            return res.status(400).json({
+                message: "Old password is incorrect"
+            });
+        }
+
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.tempPassword = false;
+        await user.save();
+
+        return res.status(200).json({
+            message: "Password changed successfully"
+        });
+
+    } catch (err) {
+        return res.status(500).json({ message: err.message });
     }
-
-    const user = await User.findOne({
-      email,
-      role: normalizedRole
-    }).select("+password");
-
-    if (!user) {
-      return res.status(404).json({
-        message: "User not found for this role"
-      });
-    }
-
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isMatch) {
-      return res.status(400).json({
-        message: "Old password is incorrect"
-      });
-    }
-
-    user.password = await bcrypt.hash(newPassword, 10);
-    user.tempPassword = false;
-    await user.save();
-
-    return res.status(200).json({
-      message: "Password changed successfully"
-    });
-
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
 };
 
 export const createVolunteerByAdmin = async (req, res) => {
@@ -1712,132 +1712,326 @@ export const resetPassword = async (req, res) => {
         return res.status(500).json({ message: err.message });
     }
 };
+
+
 // ================= Signup with OTP ================= //       
 
-
-
 export const sendSignupOtp = async (req, res) => {
-  try {
-    const { fullName, email, role } = req.body;
+    try {
+        const { fullName, email, role } = req.body;
 
-    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-      return res.status(400).json({ message: "Invalid email" });
+        if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+            return res.status(400).json({ message: "Invalid email" });
+        }
+
+        // ❌ check in USER (already registered)
+        const existingUser = await User.findOne({ email, role });
+        if (existingUser) {
+            return res.status(400).json({ message: "Email already registered" });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        await SignupOtp.findOneAndUpdate(
+            { email, role },
+            {
+                fullName,
+                role,
+                verified: false,
+                otp,
+                expiresAt: new Date(Date.now() + 10 * 60 * 1000)
+            },
+            { upsert: true, new: true }
+        );
+
+        await sendSignupOtpEmail({ toEmail: email, fullName, otp });
+        console.log("✉️ EMAIL OTP:", otp);
+
+        return res.status(200).json({ message: "OTP sent successfully" });
+
+    } catch (err) {
+        return res.status(500).json({ message: "OTP send failed" });
     }
-
-    // ❌ check in USER (already registered)
-    const existingUser = await User.findOne({ email,role });
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    await SignupOtp.findOneAndUpdate(
-      { email,role },
-      {
-        fullName,
-        role,
-        verified: false,
-        otp,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000)
-      },
-      { upsert: true,new: true }
-    );
-
-    await sendSignupOtpEmail({ toEmail: email, fullName, otp });
-    console.log("✉️ Email OTP:", otp);
-
-    return res.status(200).json({ message: "OTP sent successfully" });
-
-  } catch (err) {
-    return res.status(500).json({ message: "OTP send failed" });
-  }
 };
 
 // import SignupOtp from "../../model/SignupOtp";
 
 export const verifySignupOtp = async (req, res) => {
-  try {
-    const { email, otp,role } = req.body;
+    try {
+        const { email, otp, role } = req.body;
 
-    const record = await SignupOtp.findOne({ email,role });
+        const record = await SignupOtp.findOne({ email, role });
 
-    if (!record || record.otp !== otp) {
-      return res.status(400).json({ message: "Invalid OTP" });
+        if (!record || record.otp !== otp) {
+            return res.status(400).json({ message: "Invalid OTP" });
+        }
+
+        if (new Date() > record.expiresAt) {
+            return res.status(400).json({ message: "OTP expired" });
+        }
+
+        // ✅ THIS IS THE MISSING PIECE
+        record.verified = true;
+        await record.save();
+
+        return res.status(200).json({
+            message: `${role} Email verified`,
+            verified: true
+        });
+
+    } catch (err) {
+        return res.status(500).json({ message: err.message });
     }
-
-    if (new Date() > record.expiresAt) {
-      return res.status(400).json({ message: "OTP expired" });
-    }
-
-    // ✅ THIS IS THE MISSING PIECE
-    record.verified = true;
-    await record.save();
-
-    return res.status(200).json({
-      message: `${role} Email verified`,
-      verified: true
-    });
-
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
 };
 
 //phone otp verification 
 
 
 export const sendPhoneOtp = async (req, res) => {
-  try {
-    const { contactNumber } = req.body;
+    try {
+        const { contactNumber } = req.body;
 
-    if (!/^[6-9]\d{9}$/.test(contactNumber)) {
-      return res.status(400).json({ message: "Invalid mobile number" });
+        if (!/^[6-9]\d{9}$/.test(contactNumber)) {
+            return res.status(400).json({ message: "Invalid mobile number" });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        await PhoneOtp.findOneAndUpdate(
+            { contactNumber },
+            {
+                otp,
+                expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+                verified: false
+            },
+            { upsert: true }
+        );
+
+        console.log("📲 PHONE OTP:", otp);
+
+        return res.status(200).json({ message: "OTP sent successfully" });
+
+    } catch (err) {
+        return res.status(500).json({ message: err.message });
     }
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    await PhoneOtp.findOneAndUpdate(
-      { contactNumber },
-      {
-        otp,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-        verified: false
-      },
-      { upsert: true }
-    );
-
-    console.log("📲 PHONE OTP:", otp);
-
-    return res.status(200).json({ message: "OTP sent successfully" });
-
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
 };
 export const verifyPhoneOtp = async (req, res) => {
-  try {
-    const { contactNumber, otp } = req.body;
+    try {
+        const { contactNumber, otp } = req.body;
 
-    const record = await PhoneOtp.findOne({ contactNumber });
+        const record = await PhoneOtp.findOne({ contactNumber });
 
-    if (!record || record.otp !== otp) {
-      return res.status(400).json({ message: "Invalid OTP" });
+        if (!record || record.otp !== otp) {
+            return res.status(400).json({ message: "Invalid OTP" });
+        }
+
+        if (new Date() > record.expiresAt) {
+            return res.status(400).json({ message: "OTP expired" });
+        }
+
+        record.verified = true;
+        await record.save();
+
+        return res.status(200).json({
+            message: "Phone verified",
+            verified: true
+        });
+
+    } catch (err) {
+        return res.status(500).json({ message: err.message });
     }
-
-    if (new Date() > record.expiresAt) {
-      return res.status(400).json({ message: "OTP expired" });
-    }
-
-    record.verified = true;
-    await record.save();
-
-    return res.status(200).json({
-      message: "Phone verified",
-      verified: true
-    });
-
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
 };
+
+
+// ================= Existing User Verification with OTP ================= //    
+
+// Send email verification OTP to existing user
+
+export const sendEmailVerificationOtp = async (req, res) => {
+    try {
+        const userId = req.user._id; // from JWT
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        if (user.emailVerified) {
+            return res.status(400).json({ message: "Email already verified" });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        user.emailOtp = otp;
+        user.emailOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+        await user.save();
+
+        await sendSignupOtpEmail({
+            toEmail: user.email,
+            fullName: user.fullName,
+            otp
+        });
+
+        console.log("📧 EMAIL OTP:", otp);
+
+        return res.status(200).json({ message: "Email OTP sent" });
+    } catch (err) {
+        return res.status(500).json({ message: err.message });
+    }
+};
+
+
+// Verify email OTP for existing user
+// export const verifyEmailVerificationOtp = async (req, res) => {
+//     try {
+//         console.log("REQ.USER:", req.user);
+
+//         const { otp } = req.body;
+//         const userId = req.user._id;
+
+//         const user = await User.findById(userId);
+
+//         if (!user || user.emailOtp !== String(otp)) {
+//             return res.status(400).json({ message: "Invalid OTP" });
+//         }
+//         console.log("DB OTP:", user.emailOtp);
+//         console.log("REQ OTP:", otp, typeof otp);
+
+//         if (new Date() > user.emailOtpExpiresAt) {
+//             return res.status(400).json({ message: "OTP expired" });
+//         }
+
+//         user.emailVerified = true;
+//         user.emailOtp = undefined;
+//         user.emailOtpExpiresAt = undefined;
+
+//         await user.save();
+
+//         return res.status(200).json({
+//             message: "Email verified successfully",
+//             verified: true
+//         });
+//     } catch (err) {
+//         return res.status(500).json({ message: err.message });
+//     }
+// };
+
+
+export const verifyEmailVerificationOtp = async (req, res) => {
+    try {
+        const { otp } = req.body;
+        const userId = req.user._id;
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        console.log("DB OTP:", user.emailOtp);
+        console.log("REQ OTP:", otp, typeof otp);
+
+        if (!user.emailOtp || !user.emailOtpExpiresAt) {
+            return res.status(400).json({ message: "OTP not requested" });
+        }
+
+        if (new Date() > user.emailOtpExpiresAt) {
+            return res.status(400).json({ message: "OTP expired" });
+        }
+
+        if (user.emailOtp !== String(otp)) {
+            return res.status(400).json({ message: "Invalid OTP" });
+        }
+
+        user.emailVerified = true;
+        user.emailOtp = undefined;
+        user.emailOtpExpiresAt = undefined;
+
+        await user.save();
+
+        return res.status(200).json({
+            message: "Email verified successfully",
+            verified: true
+        });
+    } catch (err) {
+        console.error("VERIFY EMAIL OTP ERROR:", err);
+        return res.status(500).json({ message: err.message });
+    }
+};
+
+export const getMe = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select("-password");
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.status(200).json({ user });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+export const sendPhoneVerificationOtp = async (req, res) => {
+    try {
+        console.log("REQ.USER:", req.user);
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(400).json({ message: "user not found" });
+        }
+
+        if (!user.contactNumber) {
+            return res.status(400).json({ message: "No phone number found" });
+        }
+
+        if (user.phoneVerified) {
+            return res.status(400).json({ message: "Phone already verified" });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        user.phoneOtp = otp;
+        user.phoneOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+        await user.save();
+
+        console.log("📱 PHONE OTP:", otp)
+
+        return res.status(200).json({ message: "Phone OTP sent successfully" });
+    } catch (err) {
+        console.error("SEND PHONE OTP ERROR:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+
+export const verifyPhoneVerificationOTP = async (req, res) => {
+    try {
+        const { otp } = req.body;
+
+        const user = await User.findById(req.user._id);
+
+        if (!user || user.phoneOtp !== String(otp)) {
+            return res.status(400).json({ message: "Invalid OTP" })
+        }
+
+        if (new Date() > user.phoneOtpExpiresAt) {
+            return res.status(400).json({ message: "OTP expired" })
+        }
+
+        user.phoneVerified = true;
+        user.phoneOtp = undefined;
+        user.phoneOtpExpiresAt = undefined;
+
+        await user.save();
+
+        return res.status(200).json({
+            message: "Phone verified successfully",
+            verified: true,
+        })
+    } catch (err) {
+        return res.status(500).json({ message: err.message })
+    }
+}
