@@ -962,7 +962,7 @@ export const register = async (req, res) => {
     }
 
     // 🔴 CHECK USER ALREADY EXISTS
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email ,role });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -1745,6 +1745,7 @@ export const sendSignupOtp = async (req, res) => {
     );
 
     await sendSignupOtpEmail({ toEmail: email, fullName, otp });
+    console.log("✉️ Email OTP:", otp);
 
     return res.status(200).json({ message: "OTP sent successfully" });
 
