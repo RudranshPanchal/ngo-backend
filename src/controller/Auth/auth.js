@@ -895,105 +895,161 @@ import { uploadToCloudinary } from "../../utils/uploader.js";
 import { sendVolunteerWelcomeEmail, sendMemberWelcomeEmail, sendPasswordResetOtpEmail, sendContactUsEmail } from "../../utils/mail.js";
 import Donation from "../../model/Donation/donation.js";
 import { sendSignupOtpEmail } from "../../utils/mail.js";
+ import SignupOtp from "../../model/SignupOtp/SignupOtp.js";
+import PhoneOtp from "../../model/PhoneOtp/PhoneOtp.js";
 
 
+// export const register = async (req, res) => {
+//     try {
+//         console.log('Registration request received');
+//         console.log('Body:', req.body);
 
+//         const { fullName, email, password, role } = req.body;
+
+//         if (!fullName || !email || !password) {
+//             return res.status(400).json({ message: 'Missing required fields' });
+//         }
+
+//         // Hash password
+//         const hash = await bcrypt.hash(password, 10);
+//         const memberId = 'user' + Date.now();
+
+//         // Create new user
+//         const user = await User.create({
+            // fullName,
+            // email,
+            // password: hash,
+            // role: role || 'donor',
+            // memberId,
+            // organisationName: req.body.organisationName || "",
+            // contactNumber: req.body.contactNumber || "",
+            // address: req.body.address || "",
+            // area: req.body.area || "",
+            // state: req.body.state || "",
+            // panNumber: req.body.panNumber || "",
+            // gstNumber: req.body.gstNumber || "",
+                        
+//         });
+
+//         console.log('✅ User saved:', user);
+
+//         // ✅ FIXED: return the created user, not the model
+//         res.status(201).json({
+//             data: user,
+//             message: 'Registration successful'
+//         });
+
+//     } catch (err) {
+//         console.error('❌ Registration error:', err);
+//         res.status(500).json({ message: err.message });
+//     }
+// };
 export const register = async (req, res) => {
-    try {
-        console.log('Registration request received');
-        console.log('Body:', req.body);
+  try {
+    const { fullName, email, password, role } = req.body;
 
-        const { fullName, email, password, role } = req.body;
+    if (!fullName || !email || !password) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
 
-        if (!fullName || !email || !password) {
-            return res.status(400).json({ message: 'Missing required fields' });
-        }
+    // 🔴 CHECK OTP VERIFIED
+    const otpRecord = await SignupOtp.findOne({ email });
 
-        // Hash password
-        const hash = await bcrypt.hash(password, 10);
-        const memberId = 'user' + Date.now();
+    if (!otpRecord || otpRecord.verified !== true) {
+      return res.status(400).json({
+        message: "Please verify email first"
+      });
+    }
 
-        // Create new user
-        const user = await User.create({
-            fullName,
-            email,
-            password: hash,
-            role: role || 'donor',
-            memberId,
+    // 🔴 CHECK USER ALREADY EXISTS
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    const memberId = "user" + Date.now();
+
+    const user = await User.create({
+      fullName,
+      email,
+      password: hash,
+      role: role || "donor",
+      memberId,
             organisationName: req.body.organisationName || "",
             contactNumber: req.body.contactNumber || "",
             address: req.body.address || "",
             area: req.body.area || "",
             state: req.body.state || "",
             panNumber: req.body.panNumber || "",
-            gstNumber: req.body.gstNumber || ""
-        });
+            gstNumber: req.body.gstNumber || "",
 
-        console.log('✅ User saved:', user);
+      // ✅ VERY IMPORTANT
+      emailVerified: true,
+      phoneVerified: false
+    });
 
-        // ✅ FIXED: return the created user, not the model
-        res.status(201).json({
-            data: user,
-            message: 'Registration successful'
-        });
+    // ✅ CLEANUP OTP RECORD
+    await SignupOtp.deleteOne({ email });
 
-    } catch (err) {
-        console.error('❌ Registration error:', err);
-        res.status(500).json({ message: err.message });
-    }
+    return res.status(201).json({
+      message: "Registration successful",
+      user
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 };
 
 export const login = async (req, res) => {
-    try {
-        const { email, password, role } = req.body;
-
-        if (!email || !password || !role) {
-            return res.status(400).json({ error: 'Email, password, and role are required' });
-        }
-
-        const user = await User.findOne({ email });
-        console.log("ROLEE", user)
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        if (user.role !== role) {
-            return res.status(400).json({ error: 'Role does not match' });
-        }
-
-        //     if (role && user.role.toLowerCase().trim() !== role.toLowerCase().trim()) {
-        //     return res.status(403).json({ error: `User is not a ${role}` });
-        // }
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ error: 'Invalid password' });
-        }
-        if (user.tempPassword === true) {
-            return res.status(403).json({
-                error: 'Password change required before proceeding',
-                action: 'redirect_to_change_password',
-            });
-        }
-
-
-        // 6️⃣ Generate JWT token
-        const token = jwt.sign(
-            { userId: user._id, role: user.role },
-            process.env.JWT_SECRET || 'your_secret_key',
-            { expiresIn: '2d' }
-        );
-
-        // 7️⃣ Send response
-        res.status(200).json({
-            message: 'Login successful',
-            token,
-        });
-
-    } catch (err) {
-        console.error('Login error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+  try {
+    const { email, password } = req.body;
+    const role = req.body.role?.toLowerCase().trim();
+    console.log('Login attempt:', { email, role });
+    if (!email || !password || !role) {
+      return res.status(400).json({ error: 'Email, password, and role are required' });
     }
+
+    const user = await User.findOne({ email , role });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // ✅ SAFE ROLE CHECK
+    if (user.role.toLowerCase() !== role) {
+        console.log(`Role mismatch: user role is ${user.role}, attempted role is ${role}`);
+      return res.status(400).json({ error: 'Role does not match' });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+
+    if (user.tempPassword === true) {
+      return res.status(403).json({
+        error: 'Password change required before proceeding',
+        action: 'redirect_to_change_password',
+      });
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '2d' }
+    );
+
+    return res.status(200).json({
+      message: 'Login successful',
+      token,
+    });
+
+  } catch (err) {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 };
+
 
 export const getUserDetails = async (req, res) => {
     try {
@@ -1123,40 +1179,44 @@ export const updateUserDetails = async (req, res) => {
 }
 
 export const changePassword = async (req, res) => {
-    try {
-        // const userId = req.user?._id;
-        const { email, oldPassword, newPassword } = req.body;
+  try {
+    const { email, role, oldPassword, newPassword } = req.body;
+    const normalizedRole = role?.toLowerCase().trim();
 
-        // if (!userId) return res.status(401).json({ message: 'Unauthorized' });
-        if (!oldPassword || !newPassword) {
-            return res.status(400).json({ message: 'oldPassword and newPassword are required' });
-        }
-        if (newPassword.length < 6) {
-            return res.status(400).json({ message: 'newPassword must be at least 6 characters' });
-        }
-
-        // const user = await User.findById(userId).select('+password');
-
-        const user = await User.findOne({ email }).select('+password');
-
-        if (!user) return res.status(404).json({ message: 'User not found' });
-
-        const isMatch = await bcrypt.compare(oldPassword, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ message: 'Old password is incorrect' });
-        }
-
-        const newHash = await bcrypt.hash(newPassword, 10);
-        user.password = newHash;
-
-        user.tempPassword = false;
-        await user.save();
-
-        return res.status(200).json({ message: 'Password changed successfully' });
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
+    if (!email || !role || !oldPassword || !newPassword) {
+      return res.status(400).json({ message: "All fields are required" });
     }
-}
+
+    const user = await User.findOne({
+      email,
+      role: normalizedRole
+    }).select("+password");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found for this role"
+      });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        message: "Old password is incorrect"
+      });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.tempPassword = false;
+    await user.save();
+
+    return res.status(200).json({
+      message: "Password changed successfully"
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
 
 export const createVolunteerByAdmin = async (req, res) => {
     try {
@@ -1655,158 +1715,125 @@ export const resetPassword = async (req, res) => {
 // ================= Signup with OTP ================= //       
 
 
+
 export const sendSignupOtp = async (req, res) => {
   try {
     const { fullName, email, role } = req.body;
 
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-      return res.status(400).json({
-        message: "Invalid email address",
-      });
+      return res.status(400).json({ message: "Invalid email" });
     }
 
-    // 🔴 SIGNUP CASE: user should NOT exist
-    let user = await User.findOne({ email });
-
-    if (user && user.emailVerified) {
-      return res.status(400).json({
-        message: "Email already registered",
-      });
-    }
-
-    if (!user) {
-      user = new User({
-        fullName,
-        email,
-        role,
-      });
+    // ❌ check in USER (already registered)
+    const existingUser = await User.findOne({ email,role });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already registered" });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    user.signupOtp = otp;
-    user.signupOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    user.emailVerified = false;
+    await SignupOtp.findOneAndUpdate(
+      { email,role },
+      {
+        fullName,
+        role,
+        verified: false,
+        otp,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000)
+      },
+      { upsert: true,new: true }
+    );
 
-    await user.save();
+    await sendSignupOtpEmail({ toEmail: email, fullName, otp });
 
-    await sendSignupOtpEmail({
-      toEmail: email,
-      fullName: fullName,
-      otp,
-    });
-
-    return res.status(200).json({
-      message: "OTP sent successfully",
-    });
+    return res.status(200).json({ message: "OTP sent successfully" });
 
   } catch (err) {
-    console.error("SEND SIGNUP OTP ERROR:", err);
-    return res.status(500).json({ message: "Failed to send OTP" });
+    return res.status(500).json({ message: "OTP send failed" });
   }
 };
 
+// import SignupOtp from "../../model/SignupOtp";
+
 export const verifySignupOtp = async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const { email, otp,role } = req.body;
 
-    const user = await User.findOne({ email });
+    const record = await SignupOtp.findOne({ email,role });
 
-    if (!user || !user.signupOtp) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
-    }
-
-    if (user.signupOtp !== otp) {
+    if (!record || record.otp !== otp) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
-    if (new Date() > user.signupOtpExpiresAt) {
+    if (new Date() > record.expiresAt) {
       return res.status(400).json({ message: "OTP expired" });
     }
 
-    user.signupOtp = undefined;
-    user.signupOtpExpiresAt = undefined;
-    user.emailVerified = true;
+    // ✅ THIS IS THE MISSING PIECE
+    record.verified = true;
+    await record.save();
 
-    await user.save();
+    return res.status(200).json({
+      message: `${role} Email verified`,
+      verified: true
+    });
 
-    return res.status(200).json({ message: "OTP verified successfully" });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
 };
 
 //phone otp verification 
+
+
 export const sendPhoneOtp = async (req, res) => {
   try {
     const { contactNumber } = req.body;
 
-    // ✅ BASIC VALIDATION
-    if (!contactNumber || !/^[6-9]\d{9}$/.test(contactNumber)) {
-      return res.status(400).json({
-        message: "Invalid mobile number",
-      });
-    }
-
-    const user = await User.findOne({ contactNumber });
-
-    // ❌ USER MUST EXIST
-    if (!user) {
-      return res.status(400).json({
-        message: "Mobile number not registered",
-      });
+    if (!/^[6-9]\d{9}$/.test(contactNumber)) {
+      return res.status(400).json({ message: "Invalid mobile number" });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.phoneOtp = otp;
-    user.phoneOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    user.phoneVerified = false;
 
-    await user.save();
+    await PhoneOtp.findOneAndUpdate(
+      { contactNumber },
+      {
+        otp,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        verified: false
+      },
+      { upsert: true }
+    );
 
     console.log("📲 PHONE OTP:", otp);
 
-    return res.status(200).json({
-      message: "OTP sent successfully",
-    });
+    return res.status(200).json({ message: "OTP sent successfully" });
 
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
 };
-
-
 export const verifyPhoneOtp = async (req, res) => {
   try {
     const { contactNumber, otp } = req.body;
 
-    if (!contactNumber || !otp) {
-      return res.status(400).json({ message: "Contact number & OTP required" });
-    }
+    const record = await PhoneOtp.findOne({ contactNumber });
 
-    const user = await User.findOne({ contactNumber });
-
-    if (!user || !user.phoneOtp) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
-    }
-
-    if (user.phoneOtp !== otp) {
+    if (!record || record.otp !== otp) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
-    if (new Date() > user.phoneOtpExpiresAt) {
+    if (new Date() > record.expiresAt) {
       return res.status(400).json({ message: "OTP expired" });
     }
 
-    user.phoneOtp = undefined;
-    user.phoneOtpExpiresAt = undefined;
-    user.phoneVerified = true;
-
-    await user.save();
+    record.verified = true;
+    await record.save();
 
     return res.status(200).json({
-      success: true,
-      message: "Phone verified successfully",
+      message: "Phone verified",
+      verified: true
     });
 
   } catch (err) {
