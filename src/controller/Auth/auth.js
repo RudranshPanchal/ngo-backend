@@ -1730,7 +1730,9 @@ export const sendSignupOtp = async (req, res) => {
             return res.status(400).json({ message: "Email already registered" });
         }
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        // const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = "123456"; // For testing purposes
+
 
         await SignupOtp.findOneAndUpdate(
             { email, role },
@@ -1762,7 +1764,7 @@ export const verifySignupOtp = async (req, res) => {
 
         const record = await SignupOtp.findOne({ email, role });
 
-        if (!record || record.otp !== otp) {
+        if (!record || record.otp !== String(otp)) {
             return res.status(400).json({ message: "Invalid OTP" });
         }
 
