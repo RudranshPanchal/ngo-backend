@@ -272,24 +272,44 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 const app = express();
 const server = createServer(app);
+
+
+const allowedOrigins = [
+  "https://ngo-frontend-44nf.onrender.com", // ✅ Render frontend
+  "https://orbosis-ngo-frontend-hazel.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000",
+  "http://localhost:3001",
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow Postman / server-to-server
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      console.error("❌ CORS BLOCKED:", origin);
+      return callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 const io = new Server(server, {
   cors: {
-    origin: "https://ngo-frontend-44nf.onrender.com",
-    methods: ["GET", "POST"]
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
-app.use(cors({
-  origin: [
-    "https://orbosis-ngo-frontend-hazel.vercel.app",
-    process.env.VITE_BASE_URL,
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:5173",
-    "http://localhost:5174"
-  ],
-  credentials: true
-}));
+// 🔥 REQUIRED FOR PREFLIGHT
+app.options("*", cors());
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
