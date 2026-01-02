@@ -1716,6 +1716,42 @@ export const resetPassword = async (req, res) => {
 
 // ================= Signup with OTP ================= //       
 
+// export const sendSignupOtp = async (req, res) => {
+//   try {
+//     const { fullName, email, role } = req.body;
+
+//     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+//       return res.status(400).json({ message: "Invalid email" });
+//     }
+
+//     // ❌ check in USER (already registered)
+//     const existingUser = await User.findOne({ email,role });
+//     if (existingUser) {
+//       return res.status(400).json({ message: "Email already registered" });
+//     }
+
+//     // const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//     const otp = "123456";
+//     await SignupOtp.findOneAndUpdate(
+//       { email,role },
+//       {
+//         fullName,
+//         role,
+//         verified: false,
+//         otp,
+//         expiresAt: new Date(Date.now() + 10 * 60 * 1000)
+//       },
+//       { upsert: true,new: true }
+//     );
+
+//     await sendSignupOtpEmail({ toEmail: email, fullName, otp });
+
+//     return res.status(200).json({ message: "OTP sent successfully" });
+
+//   } catch (err) {
+//     return res.status(500).json({ message: "OTP send failed" });
+//   }
+// };
 export const sendSignupOtp = async (req, res) => {
     try {
         const { fullName, email, role } = req.body;

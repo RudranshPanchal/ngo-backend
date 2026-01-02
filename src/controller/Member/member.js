@@ -222,3 +222,28 @@ If you believe this is a mistake, you may contact our support team.
     });
   }
 };
+export const getMemberById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const member = await Member.findById(id);
+
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: "Member not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      member,
+    });
+  } catch (err) {
+    console.error("getMemberById ERROR:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};

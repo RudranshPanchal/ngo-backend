@@ -2,7 +2,7 @@ import cloudinary from "../config/cloudinary.js";
 
 export const uploadToCloudinary = (file, folder) => {
   return new Promise((resolve, reject) => {
-    if (!file) return resolve(null);
+    if (!file || !file.buffer) return resolve(null);
 
     const dataUri =
       `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
