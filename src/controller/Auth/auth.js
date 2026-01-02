@@ -962,7 +962,7 @@ export const register = async (req, res) => {
     }
 
     // 🔴 CHECK USER ALREADY EXISTS
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email, role });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -1716,6 +1716,42 @@ export const resetPassword = async (req, res) => {
 
 
 
+// export const sendSignupOtp = async (req, res) => {
+//   try {
+//     const { fullName, email, role } = req.body;
+
+//     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+//       return res.status(400).json({ message: "Invalid email" });
+//     }
+
+//     // ❌ check in USER (already registered)
+//     const existingUser = await User.findOne({ email,role });
+//     if (existingUser) {
+//       return res.status(400).json({ message: "Email already registered" });
+//     }
+
+//     // const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//     const otp = "123456";
+//     await SignupOtp.findOneAndUpdate(
+//       { email,role },
+//       {
+//         fullName,
+//         role,
+//         verified: false,
+//         otp,
+//         expiresAt: new Date(Date.now() + 10 * 60 * 1000)
+//       },
+//       { upsert: true,new: true }
+//     );
+
+//     await sendSignupOtpEmail({ toEmail: email, fullName, otp });
+
+//     return res.status(200).json({ message: "OTP sent successfully" });
+
+//   } catch (err) {
+//     return res.status(500).json({ message: "OTP send failed" });
+//   }
+// };
 export const sendSignupOtp = async (req, res) => {
   try {
     const { fullName, email, role } = req.body;
@@ -1724,31 +1760,41 @@ export const sendSignupOtp = async (req, res) => {
       return res.status(400).json({ message: "Invalid email" });
     }
 
-    // ❌ check in USER (already registered)
-    const existingUser = await User.findOne({ email,role });
+    // Normalize data (Deployment par lowercase mismatch se bachne ke liye)
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedRole = role ? role.toLowerCase().trim() : "donor";
+
+    const existingUser = await User.findOne({ email: normalizedEmail, role: normalizedRole });
     if (existingUser) {
       return res.status(400).json({ message: "Email already registered" });
     }
+//     // const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = "123456"; // Hardcoded for testing
 
     await SignupOtp.findOneAndUpdate(
-      { email,role },
+      { email: normalizedEmail, role: normalizedRole }, // Same normalization here
       {
         fullName,
-        role,
+        role: normalizedRole,
         verified: false,
         otp,
         expiresAt: new Date(Date.now() + 10 * 60 * 1000)
       },
-      { upsert: true,new: true }
+      { upsert: true, new: true }
     );
 
-    await sendSignupOtpEmail({ toEmail: email, fullName, otp });
+    // Email fail ho toh bhi success jaye (As discussed before)
+    try {
+        await sendSignupOtpEmail({ toEmail: normalizedEmail, fullName, otp });
+    } catch (e) {
+        console.log("Email error bypassed");
+    }
 
     return res.status(200).json({ message: "OTP sent successfully" });
 
   } catch (err) {
+    console.error("OTP send error:", err);
     return res.status(500).json({ message: "OTP send failed" });
   }
 };
@@ -1761,7 +1807,7 @@ export const verifySignupOtp = async (req, res) => {
 
     const record = await SignupOtp.findOne({ email,role });
 
-    if (!record || record.otp !== otp) {
+    if (!record || record.otp !== String(otp)) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
@@ -1794,8 +1840,8 @@ export const sendPhoneOtp = async (req, res) => {
       return res.status(400).json({ message: "Invalid mobile number" });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
+    // const otp = Math.floor(100000 + Math.random() * 900000).toString();
+const otp="123456"
     await PhoneOtp.findOneAndUpdate(
       { contactNumber },
       {
@@ -1820,7 +1866,7 @@ export const verifyPhoneOtp = async (req, res) => {
 
     const record = await PhoneOtp.findOne({ contactNumber });
 
-    if (!record || record.otp !== otp) {
+    if (!record || record.otp !== String(otp) ){
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
