@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
 
-    // for member
+    // ----for member -----//
 
     fullName: {
         type: String,
@@ -83,7 +83,7 @@ const userSchema = new mongoose.Schema({
     },
 
 
-    // for volunteer
+    // ------for volunteer------//
 
     profession: {
         type: String
@@ -116,32 +116,44 @@ const userSchema = new mongoose.Schema({
     profilePic: {
         type: String
     },
-phoneOtp: {
-  type: String,
-},
 
-phoneOtpExpiresAt: {
-  type: Date,
-},
+    phoneOtp: {
+    type: String,
+    },
 
-phoneVerified: {
-  type: Boolean,
-  default: false,
-},
+    phoneOtpExpiresAt: {
+    type: Date,
+    },
 
-//of signup 
+    phoneVerified: {
+    type: Boolean,
+    default: false,
+    },
+
+    emailOtp: {
+    type: String,
+    },
+
+    emailOtpExpiresAt: {
+    type: Date,
+    },
+
+    //of signup 
     signupOtp: {
-  type: String,
-},
-signupOtpExpiresAt: {
-  type: Date,
-},
-emailVerified: {
-  type: Boolean,
-  default: false,
-},
+    type: String,
+    },
 
-    //    for doner
+    signupOtpExpiresAt: {
+    type: Date,
+    },
+
+    emailVerified: {
+    type: Boolean,
+    default: false,
+    },
+
+
+    //-------for donor-------//
 
     organisationName: {
         type: String
