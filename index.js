@@ -262,6 +262,7 @@ import donorRouter from "./src/routes/Donor/donor.js";
 import fundRaisingrout from "./src/routes/fundRaisingrout/fundRaisingrout.js";
 import auditReportRoutes from "./src/routes/AuditReport/report.routes.js";
 import auditPdfRoutes from "./src/routes/AuditReport/pdf.routes.js";
+import eventRouter from "./src/routes/Event/event.js";
 import { log } from "console";
 
 
@@ -340,7 +341,7 @@ app.get('/', (req, res) => {
       beneficiary: '/api/beneficiary',
       member: '/api/member',
       certificate: '/api/certificate',
-      fundraising: "/api/fundraising"  
+      fundraising: "/api/fundraising"
     }
   });
 });
@@ -436,11 +437,13 @@ app.get("/data",async(req,res)=>{
     });
 })
 
+// Events
+app.use("/api/event", eventRouter)
+
 
 // Audit Report
 app.use("/api/report", auditReportRoutes);
 app.use("/api/report", auditPdfRoutes);
-
 
 // Check donations endpoint
 app.get('/check-donations', async (req, res) => {

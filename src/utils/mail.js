@@ -27,7 +27,7 @@ export async function sendVolunteerWelcomeEmail({
 	volunteerId
 }) {
 	const from = process.env.SMTP_USER;
-	const subject = "Welcome to Orbosis NGO - Your Volunteer Account";
+	const subject = "Welcome to Orbosis NGO - Your Volunteer Account is Ready";
 
 	const html = `
 		<div style="font-family: Arial, Helvetica, sans-serif; line-height: 1.6;">

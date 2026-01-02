@@ -42,7 +42,11 @@ export const registerVolunteer = async (req, res) => {
         res.status(201).json({ success: true, volunteer });
 
     } catch (error) {
-        // ... error handling ...
+        res.status(500).json({
+            success: false,
+            message: "Error registering volunteer",
+            error: error.message,
+        });
     }
 };
 export const getAllVolunteers = async (req, res) => {
