@@ -1772,8 +1772,8 @@ export const sendSignupOtp = async (req, res) => {
             { upsert: true, new: true }
         );
 
-        await sendSignupOtpEmail({ toEmail: email, fullName, otp });
-        console.log("✉️ EMAIL OTP:", otp);
+        // await sendSignupOtpEmail({ toEmail: email, fullName, otp });
+        // console.log("✉️ EMAIL OTP:", otp);
 
         return res.status(200).json({ message: "OTP sent successfully" });
 
