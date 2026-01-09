@@ -30,14 +30,14 @@ export const registerVolunteer = async (req, res) => {
         await volunteer.save();
 
         // Mail sending logic...
-        try {
-            await sendVolunteerApplicationReceivedEmail({
-                toEmail: volunteer.email,
-                fullName: volunteer.fullName,
-            });
-        } catch (e) { 
-            console.log("Mail error:", e.message); 
-        }
+        // try {
+        //     await sendVolunteerApplicationReceivedEmail({
+        //         toEmail: volunteer.email,
+        //         fullName: volunteer.fullName,
+        //     });
+        // } catch (e) { 
+        //     console.log("Mail error:", e.message); 
+        // }
 
         res.status(201).json({ success: true, volunteer });
 
@@ -147,27 +147,27 @@ export const updateVolunteerStatus = async (req, res) => {
         }
       );
 
-      try {
-        await sendVolunteerWelcomeEmail({
-          toEmail: volunteer.email,
-          fullName: volunteer.fullName,
-          email: volunteer.email,
-          password,
-          volunteerId: volunteer.volunteerId
-        });
-      } catch (_) {}
+      // try {
+      //   await sendVolunteerWelcomeEmail({
+      //     toEmail: volunteer.email,
+      //     fullName: volunteer.fullName,
+      //     email: volunteer.email,
+      //     password,
+      //     volunteerId: volunteer.volunteerId
+      //   });
+      // } catch (_) {}
     }
 
     // rejection mail
-    if (status === "rejected") {
-      try {
-        await sendVolunteerRejectionEmail({
-          toEmail: volunteer.email,
-          fullName: volunteer.fullName,
-          volunteerId: volunteer.volunteerId
-        });
-      } catch (_) {}
-    }
+    // if (status === "rejected") {
+    //   try {
+    //     await sendVolunteerRejectionEmail({
+    //       toEmail: volunteer.email,
+    //       fullName: volunteer.fullName,
+    //       volunteerId: volunteer.volunteerId
+    //     });
+    //   } catch (_) {}
+    // }
 
     return res.json({ success: true, volunteer });
 

@@ -54,7 +54,7 @@ export const createEvent = async (req, res) => {
 
 export const listEvents = async (req, res) => {
     try {
-        const events = await Event.find();
+        const events = await Event.find({ isDeleted: false }).sort({ createdAt: -1 });
 
         res.status(200).json({
             success: true,

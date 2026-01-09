@@ -886,7 +886,6 @@
 import mongoose from "mongoose";
 import User from "../../model/Auth/auth.js";
 import Volunteer from "../../model/Volunteer/volunteer.js";
-import Counter from "../../model/counter.js";
 import Certificate from "../../model/Certificate/certificate.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -1228,43 +1227,34 @@ export const createVolunteerByAdmin = async (req, res) => {
 
         const adminId = req.user._id;
 
-        // 🔐 Check email in BOTH collections
+        // Check email in BOTH collections
         const emailInUser = await User.findOne({ email });
         const emailInVolunteer = await Volunteer.findOne({ email });
         if (emailInUser || emailInVolunteer) {
             return res.status(400).json({ message: "Email already exists" });
         }
 
-        // 🔢 Volunteer ID
-        // const count = await Volunteer.countDocuments();
-        // const volunteerId = `VOL${String(count + 1).padStart(4, "0")}`;
-        const counter = await Counter.findOneAndUpdate(
-            { name: "volunteer" },
-            { $inc: { seq: 1 } },
-            { new: true, upsert: true }
-        );
+        // Volunteer ID
+        const volunteerId = `VOL-${new mongoose.Types.ObjectId().toHexString().slice(-6).toUpperCase()}`;
 
-        const volunteerId = `VOL${String(counter.seq).padStart(4, "0")}`;
-
-
-        // 👤 Member ID (unchanged logic)
+        // Member ID (unchanged logic)
         const cleanName = (fullName || "volunteer").toLowerCase().replace(/\s+/g, "");
         let memberId = cleanName + (Math.floor(Math.random() * 900) + 100);
 
         const hash = await bcrypt.hash(password, 10);
 
-        // 🧠 Skills normalization
+        // Skills normalization
         const skillsArray = typeof skills === "string"
             ? skills.split(",").map(s => s.trim()).filter(Boolean)
             : Array.isArray(skills) ? skills : [];
 
-        // ☁️ Upload ID proof
+        // Upload ID proof
         let uploadIdProof = null;
         if (req.file) {
             uploadIdProof = await uploadToCloudinary(req.file, "volunteer-id-proofs");
         }
 
-        // 🧾 Create USER first (safer)
+        // Create USER first (safer)
         const user = await User.create({
             fullName,
             email,
@@ -1281,7 +1271,7 @@ export const createVolunteerByAdmin = async (req, res) => {
             uploadIdProof
         });
 
-        // 🧾 Create VOLUNTEER
+        // Create VOLUNTEER
         await Volunteer.create({
             volunteerId,
             fullName,
@@ -1298,14 +1288,14 @@ export const createVolunteerByAdmin = async (req, res) => {
             approvedAt: new Date()
         });
 
-        // 📧 Email
-        await sendVolunteerWelcomeEmail({
-            toEmail: email,
-            fullName,
-            email,
-            password,
-            volunteerId
-        });
+        // Email
+        // await sendVolunteerWelcomeEmail({
+        //     toEmail: email,
+        //     fullName,
+        //     email,
+        //     password,
+        //     volunteerId
+        // });
 
         res.status(201).json({
             message: "Volunteer created successfully",
@@ -1906,11 +1896,11 @@ export const sendEmailVerificationOtp = async (req, res) => {
 
         await user.save();
 
-        await sendSignupOtpEmail({
-            toEmail: user.email,
-            fullName: user.fullName,
-            otp
-        });
+        // await sendSignupOtpEmail({
+        //     toEmail: user.email,
+        //     fullName: user.fullName,
+        //     otp
+        // });
 
         console.log("📧 EMAIL OTP:", otp);
 

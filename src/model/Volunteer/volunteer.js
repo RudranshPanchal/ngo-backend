@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import Counter from "../counter.js";
 
 const volunteerSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
@@ -23,38 +22,17 @@ const volunteerSchema = new mongoose.Schema({
     emergencyContactNumber: { type: String, required: true },
     uploadIdProof: { type: String },
     status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
-    volunteerId: { type: String, unique: true },
+    volunteerId: { type: String, unique: true, index: true },
     // Nayi fields verification track karne ke liye
-    isEmailVerified: { 
-        type: Boolean, 
-        default: false 
+    isEmailVerified: {
+        type: Boolean,
+        default: false
     },
-    isPhoneVerified: { 
-        type: Boolean, 
-        default: false 
+    isPhoneVerified: {
+        type: Boolean,
+        default: false
     },
 
-    volunteerId: { type: String, unique: true },
-    // ...
 }, { timestamps: true });
 
-volunteerSchema.pre("save", async function (next) {
-    // Agar ID pehle se hai to kuch mat karo
-    if (this.volunteerId) return next();
-
-    try {
-        const counterDoc = await Counter.findOneAndUpdate(
-            { name: "volunteerId" },
-            { $inc: { seq: 1 } },
-            { new: true, upsert: true } // upsert: true se agar record nahi hai to ban jayega
-        );
-
-        this.volunteerId = `VOL${String(counterDoc.seq).padStart(4, "0")}`;
-        console.log("New ID Generated:", this.volunteerId); // Debugging ke liye
-        next();
-    } catch (err) {
-        console.error("Counter Error:", err);
-        next(err);
-    }
-});
 export default mongoose.model("Volunteer", volunteerSchema);
