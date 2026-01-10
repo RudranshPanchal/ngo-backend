@@ -1,7 +1,7 @@
-
 import Member from "../../model/Member/member.js";
+import Notification from "../../model/Notification/notification.js";
 import { sendEmail } from "../../utils/mail.js";
-
+import bcrypt from "bcrypt";
 //HELPERS
 function normalizeBody(raw) {
   const body = { ...raw };
@@ -9,13 +9,12 @@ function normalizeBody(raw) {
   if (!body.contactNumber && body.phoneNumber)
     body.contactNumber = body.phoneNumber;
 
-  if (!body.pinCode && body.pincode)
-    body.pinCode = body.pincode;
+  if (!body.pinCode && body.pincode) body.pinCode = body.pincode;
 
   if (body.typesOfSupport && typeof body.typesOfSupport === "string") {
     body.typesOfSupport = body.typesOfSupport
       .split(",")
-      .map(s => s.trim())
+      .map((s) => s.trim())
       .filter(Boolean);
   }
 
@@ -41,11 +40,11 @@ export const registerMember = async (req, res) => {
       "address",
     ];
 
-    const missing = required.filter(k => !body[k]);
+    const missing = required.filter((k) => !body[k]);
     if (missing.length) {
       return res.status(400).json({
         success: false,
-        message: `Missing required fields: ${missing.join(", ")}`
+        message: `Missing required fields: ${missing.join(", ")}`,
       });
     }
 
@@ -54,7 +53,7 @@ export const registerMember = async (req, res) => {
     if (exists) {
       return res.status(409).json({
         success: false,
-        message: "Member with this email already exists"
+        message: "Member with this email already exists",
       });
     }
 
@@ -70,8 +69,28 @@ export const registerMember = async (req, res) => {
       pinCode: body.pinCode || "",
       typesOfSupport: body.typesOfSupport || [],
       specialRequirement: body.specialRequirement || "",
-      status: "pending"
+      status: "pending",
     });
+
+    // 🔔 SAVE & SEND NOTIFICATION (Updated Logic)
+    try {
+      // 1. Database mein save karo
+      const newNotification = await Notification.create({
+        userType: "admin",
+        title: "New Member Registration",
+        message: `New Member registered: ${member.fullName}`,
+        type: "registration",
+        read: false,
+      });
+
+      // 2. Real-time Admin ko bhejo
+      const io = req.app.get("io");
+      if (io) {
+        io.to("admins").emit("admin-notification", newNotification);
+      }
+    } catch (notifyErr) {
+      console.error("Notification Error:", notifyErr.message);
+    }
 
     try {
       await sendEmail(
@@ -85,7 +104,7 @@ export const registerMember = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      member
+      member,
     });
   } catch (err) {
     console.error("registerMember ERROR:", err);
@@ -100,7 +119,9 @@ export const approveMember = async (req, res) => {
 
     const member = await Member.findById(id);
     if (!member) {
-      return res.status(404).json({ success: false, message: "Member not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Member not found" });
     }
 
     if (member.status === "approved") {
@@ -136,34 +157,49 @@ export const getAllMembers = async (req, res) => {
   }
 };
 
-
-
 export const updateMemberStatus = async (req, res) => {
   try {
-    const { id } = req.params;          
-    const { status } = req.body;        
+    const { id } = req.params;
+    const { status, reason } = req.body;
 
     if (!["approved", "rejected"].includes(status)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid status value"
+        message: "Invalid status value",
+      });
+    }
+    if (status === "rejected" && (!reason || !reason.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: "Rejection reason is required",
       });
     }
 
     //  Update status in DB
-    const member = await Member.findByIdAndUpdate(
-      id,
-      {
-        status,
-        reviewedAt: new Date()
-      },
-      { new: true }
-    );
+    // const member = await Member.findByIdAndUpdate(
+    //   id,
+    //   {
+    //     status,
+    //     reviewedAt: new Date()
+    //   },
+    //   { new: true }
+    // );
+    const updateData = {
+      status,
+      reviewedAt: new Date(),
+    };
+
+    if (status === "rejected") {
+      updateData.rejectionReason = reason;
+    }
+    const member = await Member.findByIdAndUpdate(id, updateData, {
+      new: true,
+    });
 
     if (!member) {
       return res.status(404).json({
         success: false,
-        message: "Member not found"
+        message: "Member not found",
       });
     }
 
@@ -187,7 +223,10 @@ Welcome to Orbosis Foundation.
         : `
 Hello ${member.fullName},
 
-We regret to inform you that your membership application has been REJECTED.
+Your membership application has been REJECTED.
+
+Reason:
+${reason}
 
 If you believe this is a mistake, you may contact our support team.
 `;
@@ -210,15 +249,14 @@ If you believe this is a mistake, you may contact our support team.
       message:
         mailStatus === "sent"
           ? `Member ${status} & mail sent`
-          : `Member ${status} but mail failed`
+          : `Member ${status} but mail failed`,
     });
-
   } catch (err) {
     console.error("updateMemberStatus ERROR:", err);
     return res.status(500).json({
       success: false,
       message: "Server error",
-      error: err.message
+      error: err.message,
     });
   }
 };
