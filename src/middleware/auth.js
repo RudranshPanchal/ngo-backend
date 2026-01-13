@@ -114,6 +114,7 @@ async function optionalAuth(req, res, next) {
 
 // 🔐 ROLE BASED
 function requireAdmin(req, res, next) {
+console.log("🔐 ADMIN CHECK USER:", req.user);
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ message: 'Admin access required' });
   }

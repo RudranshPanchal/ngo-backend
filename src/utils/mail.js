@@ -83,6 +83,29 @@ export async function sendMemberWelcomeEmail({ toEmail, fullName, email, passwor
 	});
 }
 
+export async function sendDonorWelcomeEmail({ toEmail, fullName, email, password }) {
+	const from = process.env.MAIL_FROM || process.env.SMTP_USER;
+	const subject = "Welcome to Orbosis NGO - Your Donor Account Approved";
+	const html = `
+		<div style="font-family: Arial, Helvetica, sans-serif; line-height: 1.6;">
+			<h2>Welcome to Orbosis NGO, ${fullName || "Donor"}!</h2>
+			<p>Your donor registration request has been <strong>APPROVED</strong> by the admin.</p>
+			<p>An account has been created for you. You can log in to view your donation history and profile using the credentials below:</p>
+			
+			<div style="background: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+				<p><strong>Email:</strong> ${email}</p>
+				<p><strong>Temporary Password:</strong> ${password}</p>
+			</div>
+
+			<p>Please change your password after your first login for security.</p>
+			<p>Thank you for your generous contribution!</p>
+			<p>Best regards,<br/>Orbosis NGO Team</p>
+		</div>
+	`;
+
+	await transporter.sendMail({ from, to: toEmail, subject, html });
+}
+
 export async function sendPasswordResetOtpEmail({ toEmail, fullName, otp }) {
 	const from = process.env.MAIL_FROM || process.env.SMTP_USER;
 	const subject = "Orbosis NGO - Password Reset OTP";
