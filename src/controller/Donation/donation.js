@@ -34,45 +34,92 @@ if (keyId && keySecret) {
 //                 message: ` donation recorded successfully`,    
 //             });
 // }
+// export const registerDonor = async (req, res) => {
+//   try {
+//     const { fullName, donationAmount, fundraisingId } = req.body;
+
+//     // 🔥 USER ID FROM TOKEN
+//      const userId = req.user?._id || null; 
+
+//     // if (!userId) {
+//     //   return res.status(401).json({
+//     //     success: false,
+//     //     message: "Unauthorized: user not logged in"
+//     //   });
+//     // }
+
+//     const donor = await DonationReg.create({
+//       userId, 
+//       name: fullName,
+//       organisationName: req.body.organisationName,
+//       contactNumber: req.body.contactNumber,
+//       email: req.body.email,
+//       address: req.body.address,
+//       panNumber: req.body.panNumber,
+//       gstNumber: req.body.gstNumber,
+//       donationAmount,
+//       fundraisingId: fundraisingId || null,
+//       uploadPaymentProof: req.file ? req.file.path : ""
+//     });
+
+//     return res.json({
+//       success: true,
+//       message: "Donation recorded successfully",
+//       data: donor
+//     });
+
+//   } catch (error) {
+//     console.error("registerDonor error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message
+//     });
+//   }
+// };
 export const registerDonor = async (req, res) => {
   try {
-    const { fullName, donationAmount, fundraisingId } = req.body;
+    const safeFundId =
+      req.body.fundraisingId && req.body.fundraisingId !== ""
+        ? req.body.fundraisingId
+        : null;
 
-    // 🔥 USER ID FROM TOKEN
-     const userId = req.user?._id || null; 
+    const isPhoneVerified =
+      String(req.body.isPhoneVerified).toLowerCase() === "true";
 
-    // if (!userId) {
-    //   return res.status(401).json({
-    //     success: false,
-    //     message: "Unauthorized: user not logged in"
-    //   });
-    // }
+    const isEmailVerified =
+      String(req.body.isEmailVerified).toLowerCase() === "true";
 
-    const donor = await DonationReg.create({
-      userId, 
-      name: fullName,
+    console.log("📝 FINAL FLAGS =>", {
+      isPhoneVerified,
+      isEmailVerified,
+      body: req.body,
+    });
+
+    const donorEntry = await DonationReg.create({
+      userId: req.user?._id || null,
+      name: req.body.fullName,
       organisationName: req.body.organisationName,
       contactNumber: req.body.contactNumber,
-      email: req.body.email,
       address: req.body.address,
+      email: req.body.email,
       panNumber: req.body.panNumber,
       gstNumber: req.body.gstNumber,
-      donationAmount,
-      fundraisingId: fundraisingId || null,
-      uploadPaymentProof: req.file ? req.file.path : ""
+      isPhoneVerified: Boolean(isPhoneVerified),
+      isEmailVerified: Boolean(isEmailVerified),
+      status: "pending",
+      donationAmount: req.body.donationAmount,
+      fundraisingId: safeFundId,
+      uploadPaymentProof: req.file ? req.file.path : "",
     });
 
     return res.json({
       success: true,
-      message: "Donation recorded successfully",
-      data: donor
+      data: donorEntry,
     });
-
   } catch (error) {
-    console.error("registerDonor error:", error);
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
