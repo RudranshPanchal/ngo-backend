@@ -5,7 +5,15 @@ const volunteerSchema = new mongoose.Schema({
     gender: { type: String, required: true },
     dob: { type: Date },
     contactNumber: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    email: {
+        type: String, required: true, unique: true, lowercase: true,
+        trim: true
+    },
+    userRef: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null
+    },
     address: { type: String },
     skills: { type: [String] },
     profession: { type: String },

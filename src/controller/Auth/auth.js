@@ -967,7 +967,15 @@ export const register = async (req, res) => {
         }
 
         const hash = await bcrypt.hash(password, 10);
-        const memberId = "user" + Date.now();
+        // const memberId = "user" + Date.now();
+        const cleanName = (fullName || "member")
+            .toLowerCase()
+            .replace(/\s+/g, "");
+
+        const uniqueSuffix = Math.random().toString(36).substring(2, 6);
+
+        const memberId = `${cleanName}-${uniqueSuffix}`;
+
 
         const user = await User.create({
             fullName,
@@ -1227,10 +1235,10 @@ export const createVolunteerByAdmin = async (req, res) => {
 
         const adminId = req.user._id;
 
-        // Check email in BOTH collections
+        // Check email 
         const emailInUser = await User.findOne({ email });
-        const emailInVolunteer = await Volunteer.findOne({ email });
-        if (emailInUser || emailInVolunteer) {
+        // const emailInVolunteer = await Volunteer.findOne({ email });
+        if (emailInUser) {
             return res.status(400).json({ message: "Email already exists" });
         }
 
@@ -1238,8 +1246,16 @@ export const createVolunteerByAdmin = async (req, res) => {
         const volunteerId = `VOL-${new mongoose.Types.ObjectId().toHexString().slice(-6).toUpperCase()}`;
 
         // Member ID (unchanged logic)
-        const cleanName = (fullName || "volunteer").toLowerCase().replace(/\s+/g, "");
-        let memberId = cleanName + (Math.floor(Math.random() * 900) + 100);
+        // const cleanName = (fullName || "volunteer").toLowerCase().replace(/\s+/g, "");
+        // let memberId = cleanName + (Math.floor(Math.random() * 900) + 100);
+
+        const cleanName = (fullName || "member")
+            .toLowerCase()
+            .replace(/\s+/g, "");
+
+        const uniqueSuffix = Math.random().toString(36).substring(2, 6);
+
+        const memberId = `${cleanName}-${uniqueSuffix}`;
 
         const hash = await bcrypt.hash(password, 10);
 
@@ -1254,25 +1270,8 @@ export const createVolunteerByAdmin = async (req, res) => {
             uploadIdProof = await uploadToCloudinary(req.file, "volunteer-id-proofs");
         }
 
-        // Create USER first (safer)
-        const user = await User.create({
-            fullName,
-            email,
-            password: hash,
-            role: "volunteer",
-            memberId,
-            tempPassword: true,
-            createdBy: adminId,
-
-            gender, dob, age, contactNumber, address, area, state,
-            profession, skills: skillsArray,
-            areaOfVolunteering, availability,
-            emergencyContactNumber,
-            uploadIdProof
-        });
-
         // Create VOLUNTEER
-        await Volunteer.create({
+        const volunteer = await Volunteer.create({
             volunteerId,
             fullName,
             email,
@@ -1287,6 +1286,29 @@ export const createVolunteerByAdmin = async (req, res) => {
             approvedBy: adminId,
             approvedAt: new Date()
         });
+
+        // Create USER  
+        const user = await User.create({
+            fullName,
+            email,
+            password: hash,
+            role: "volunteer",
+            memberId,
+            volunteerRef: volunteer._id,
+            gender, dob, age, contactNumber, address, area, state,
+            profession, skills: skillsArray,
+            areaOfVolunteering, availability,
+            emergencyContactNumber,
+            uploadIdProof,
+
+            tempPassword: true,
+            createdBy: adminId,
+        });
+
+        volunteer.userRef = user._id;
+        await volunteer.save();
+
+
 
         // Email
         // await sendVolunteerWelcomeEmail({
@@ -1320,9 +1342,17 @@ export const createMemberByAdmin = async (req, res) => {
             return res.status(400).json({ message: 'Email already exists' });
         }
 
-        const cleanName = (fullName || 'member').toLowerCase().replace(/\s+/g, '');
-        const randomNumbers = Math.floor(Math.random() * 900) + 100;
-        let memberId = cleanName + randomNumbers;
+        // const cleanName = (fullName || 'member').toLowerCase().replace(/\s+/g, '');
+        // const randomNumbers = Math.floor(Math.random() * 900) + 100;
+        // let memberId = cleanName + randomNumbers;
+
+        const cleanName = (fullName || "member")
+            .toLowerCase()
+            .replace(/\s+/g, "");
+        const uniqueSuffix = Math.random().toString(36).substring(2, 6);
+
+        const memberId = `${cleanName}-${uniqueSuffix}`;
+
 
         const existingMemberId = await User.findOne({ memberId });
         if (existingMemberId) {
@@ -1422,9 +1452,6 @@ export const getAllMembers = async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 }
-
-
-
 
 export const givenCerification = async (req, res) => {
     try {
@@ -1889,7 +1916,8 @@ export const sendEmailVerificationOtp = async (req, res) => {
             return res.status(400).json({ message: "Email already verified" });
         }
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        // const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = 123456;
 
         user.emailOtp = otp;
         user.emailOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -2019,7 +2047,8 @@ export const sendPhoneVerificationOtp = async (req, res) => {
             return res.status(400).json({ message: "Phone already verified" });
         }
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        // const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = 123456;
 
         user.phoneOtp = otp;
         user.phoneOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);

@@ -51,6 +51,8 @@ const userSchema = new mongoose.Schema({
 
     email: {
         type: String,
+        lowercase: true,
+        trim: true
     },
     password: {
         type: String,
@@ -62,6 +64,8 @@ const userSchema = new mongoose.Schema({
 
     memberId: {
         type: String,
+        unique: true,
+        index: true
     },
 
     role: {
@@ -85,13 +89,19 @@ const userSchema = new mongoose.Schema({
 
     // ------for volunteer------//
 
+    volunteerRef: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Volunteer",
+        default: null
+    },
+
     profession: {
         type: String
     },
 
-    skills: {
-        type: Array
-    },
+    skills: [{
+        type: String
+    }],
 
     areaOfVolunteering: {
         type: String,
@@ -118,38 +128,39 @@ const userSchema = new mongoose.Schema({
     },
 
     phoneOtp: {
-    type: String,
+        type: String,
     },
 
     phoneOtpExpiresAt: {
-    type: Date,
+        type: Date,
     },
 
     phoneVerified: {
-    type: Boolean,
-    default: false,
+        type: Boolean,
+        default: false,
     },
 
     emailOtp: {
-    type: String,
+        type: String,
     },
 
     emailOtpExpiresAt: {
-    type: Date,
+        type: Date,
     },
 
     //of signup 
+
     signupOtp: {
-    type: String,
+        type: String,
     },
 
     signupOtpExpiresAt: {
-    type: Date,
+        type: Date,
     },
 
     emailVerified: {
-    type: Boolean,
-    default: false,
+        type: Boolean,
+        default: false,
     },
 
 
@@ -174,8 +185,14 @@ const userSchema = new mongoose.Schema({
     resetOtpExpiresAt: {
         type: Date
     },
+
+
 }, { timestamps: true });
 
+// restrict entering twice with same email and role
+userSchema.index({ email: 1, role: 1 }, { unique: true })
+
 const User = mongoose.model("User", userSchema);
+
 
 export default User;
