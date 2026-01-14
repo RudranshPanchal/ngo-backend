@@ -3,6 +3,23 @@ import Donation from "../../model/Donation/donation.js";
 import User from "../../model/Auth/auth.js";
 import bcrypt from "bcrypt";
 import { sendDonorWelcomeEmail } from "../../utils/mail.js";
+const generateDonorPassword = (name, mobile) => {
+  if (!name || !mobile) return null;
+
+  // first 3 letters of name
+  const cleanName = name.replace(/\s+/g, "");
+  const namePart = cleanName.substring(0, 3).toLowerCase();
+
+  // last 4 digits of mobile
+  const mobileStr = mobile.toString();
+  if (mobileStr.length < 4) return null;
+
+  const last4 = mobileStr.slice(-4);
+
+  return `${namePart}@${last4}`;
+};
+
+
 
 /* ================= REGISTER DONOR ================= */
 export const registerDonor = async (req, res) => {
@@ -308,8 +325,19 @@ console.log(password);
 
       // 1. Generate Password if not provided by admin
       if (!finalPassword) {
-        finalPassword = Math.random().toString(36).slice(-8);
-      }
+  finalPassword = generateDonorPassword(
+    donor.name,
+    donor.contactNumber
+  );
+
+  if (!finalPassword) {
+    return res.status(400).json({
+      message: "Donor name or mobile number missing for password generation"
+    });
+  }
+}
+
+
       console.log("🔐 DONOR LOGIN PASSWORD (PLAIN):", finalPassword);
       const hashedPassword = await bcrypt.hash(finalPassword, 10);
 
