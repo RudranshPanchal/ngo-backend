@@ -263,7 +263,8 @@ import fundRaisingrout from "./src/routes/fundRaisingrout/fundRaisingrout.js";
 import auditReportRoutes from "./src/routes/AuditReport/report.routes.js";
 import auditPdfRoutes from "./src/routes/AuditReport/pdf.routes.js";
 import eventRouter from "./src/routes/Event/event.js";
-import { log } from "console";
+// import { log } from "console";
+
 
 
 const __filename = fileURLToPath(import.meta.url);

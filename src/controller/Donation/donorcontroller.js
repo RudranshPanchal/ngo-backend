@@ -77,23 +77,23 @@ export const registerDonor = async (req, res) => {
 };
 
 /* ================= DONOR PROFILE ================= */
-export const getDonorProfile = async (req, res) => {
-  try {
-    const profile = await DonationReg.findOne({
-      userId: req.user._id,
-    });
+// export const getDonorProfile = async (req, res) => {
+//   try {
+//     const profile = await DonationReg.findOne({
+//       userId: req.user._id,
+//     });
 
-    return res.json({
-      success: true,
-      data: profile,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch donor profile",
-    });
-  }
-};
+//     return res.json({
+//       success: true,
+//       data: profile,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to fetch donor profile",
+//     });
+//   }
+// };
 
 /* ================= DONATION HISTORY ================= */
 export const getDonorHistory = async (req, res) => {
@@ -148,153 +148,6 @@ export const getDonorDashboard = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
-
-// export const approveDonor = async (req, res) => {
-//   try {
-//     const donor = await DonationReg.findById(req.params.id);
-//     if (!donor) {
-//       return res.status(404).json({ message: "Donor not found" });
-//     }
-
-//     if (donor.status !== "pending") {
-//       return res.status(400).json({ message: "Already processed" });
-//     }
-
-//     // 🔐 ADMIN GENERATED PASSWORD
-//     const plainPassword = Math.random().toString(36).slice(-8);
-//     const hashedPassword = await bcrypt.hash(plainPassword, 10);
-
-//     // 👤 CREATE USER
-//     const user = await User.create({
-//       fullName: donor.name,
-//       email: donor.email,
-//       contactNumber: donor.contactNumber,
-//       role: "donor",
-//       password: hashedPassword,
-//       isEmailVerified: donor.isEmailVerified,
-//       isPhoneVerified: donor.isPhoneVerified,
-//     });
-
-//     // 💰 CREATE DONATION RECORD
-//     const donation = await Donation.create({
-//       userId: user._id,
-//       amount: donor.donationAmount,
-//       paymentMethod: donor.modeofDonation,
-//       status: "success",
-//       fundraisingId: donor.fundraisingId,
-//     });
-
-//     // 🔁 UPDATE DONOR
-//     donor.userId = user._id;
-//     donor.status = "approved";
-//     donor.approvedAt = new Date();
-//     donor.approvedBy = req.user._id;
-
-//     await donor.save();
-
-//     // 📧 (optional) send email with password
-
-//     res.json({
-//       success: true,
-//       message: "Donor approved, user & donation created",
-//     });
-//   } catch (err) {
-//     res.status(500).json({ success: false, message: err.message });
-//   }
-// };
-// export const approveDonor = async (req, res) => {
-//   try {
-//     const donor = await DonationReg.findById(req.params.id);
-//     if (!donor) {
-//       return res.status(404).json({ message: "Donor not found" });
-//     }
-
-//     if (donor.status === "approved") {
-//       return res.status(400).json({ message: "Already approved" });
-//     }
-
-//     // 🔍 USER DUPLICATE CHECK (🔥 FIX)
-//     const existingUser = await User.findOne({ email: donor.email });
-//     if (existingUser) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "User already exists with this email",
-//       });
-//     }
-
-//     // 🔐 generate password
-//     const plainPassword = Math.random().toString(36).slice(-8);
-//     const hashedPassword = await bcrypt.hash(plainPassword, 10);
-
-//     // 👤 create donor user (AUTH USER)
-//     const user = await User.create({
-//       fullName: donor.name,
-//       email: donor.email,
-//       contactNumber: donor.contactNumber,
-//       role: "donor",
-//       password: hashedPassword,
-//       isEmailVerified: donor.isEmailVerified,
-//       isPhoneVerified: donor.isPhoneVerified,
-//     });
-
-//     // ✅ update donor profile
-//     donor.userId = user._id;
-//     donor.status = "approved";
-//     donor.profileStatus = "approved";
-//     donor.approvedAt = new Date();
-//     donor.approvedBy = req.user._id;
-
-//     await donor.save();
-
-//     // 📧 (OPTIONAL but recommended)
-//     // send email: email + password
-
-//     return res.json({
-//       success: true,
-//       message: "Donor approved & login account created",
-//       credentials: {
-//         email: donor.email,
-//         password: plainPassword, // sirf email me bhejna
-//       },
-//     });
-
-//   } catch (err) {
-//     console.error("❌ approveDonor error:", err);
-//     return res.status(500).json({
-//       success: false,
-//       message: err.message,
-//     });
-//   }
-// };
-
-
-// export const rejectDonor = async (req, res) => {
-//   try {
-//     const donor = await DonationReg.findById(req.params.id);
-
-//     if (!donor) {
-//       return res.status(404).json({ message: "Donor not found" });
-//     }
-
-//     donor.status = "rejected";
-//     await donor.save();
-
-//     res.json({
-//       success: true,
-//       message: "Donor request rejected",
-//     });
-//   } catch (err) {
-//     res.status(500).json({ success: false, message: err.message });
-//   }
-// };
-// import DonationReg from "../../model/donor_reg/donor_reg.js";
-// import Donation from "../../model/Donation/donation.js";
-// import User from "../../model/Auth/auth.js";
-// import bcrypt from "bcrypt";
-// import { sendDonorWelcomeEmail, sendDonorRejectionEmail } from "../../utils/mail.js";
-
-// import Donation from "../../model/Donation/donation.js"; // 🔥 ADD THIS
 
 export const updateDonorStatus = async (req, res) => {
   try {
@@ -448,4 +301,69 @@ export const getSingleDonor = async (req, res) => {
             message: "Internal Server Error: " + err.message 
         });
     }
+};
+// import DonationReg from "../../model/donor_reg/donor_reg.js";
+
+/* ================= DONOR PROFILE ================= */
+export const getDonorProfile = async (req, res) => {
+  try {
+    // 1️⃣ Try donor profile
+    let donor = await DonationReg.findOne({ userId: req.user._id });
+
+    // 2️⃣ Agar donor profile nahi hai
+    if (!donor) {
+      const user = await User.findById(req.user._id).select(
+        "fullName email contactNumber organisationName address panNumber gstNumber"
+      );
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      // 🔥 frontend ke liye donor-like structure bhejo
+      return res.json({
+        success: true,
+        data: {
+          name: user.fullName,
+          email: user.email,
+          contactNumber: user.contactNumber,
+          organisationName: user.organisationName,
+          address: user.address || "",
+          panNumber: user.panNumber || "",
+          gstNumber: user.gstNumber || "",
+          from: "users",
+        },
+      });
+    }
+
+    // 3️⃣ Normal donor profile
+    res.json({ success: true, data: donor });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+/* ================= UPDATE DONOR PROFILE ================= */
+export const updateDonorProfile = async (req, res) => {
+  try {
+    const update = {};
+    if (req.body.panNumber) update.panNumber = req.body.panNumber;
+    if (req.body.gstNumber) update.gstNumber = req.body.gstNumber;
+    if (req.body.address) update.address = req.body.address;
+
+    const donor = await DonationReg.findOneAndUpdate(
+      { userId: req.user._id },
+      { $set: update },
+      { new: true }
+    );
+
+    res.json({ success: true, data: donor });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };

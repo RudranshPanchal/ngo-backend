@@ -130,8 +130,18 @@ export const createDonationOrder = async (req, res) => {
     console.log("🔥 Incoming Donation Body:", req.body);
     console.log("🔥 Received fundraisingId:", req.body.fundraisingId);
 
-    const { amount, modeofDonation, donorName, donorEmail, donorPhone, fundraisingId } = req.body;
-    const userId = req.user?._id || null;
+    const {
+  amount,
+  modeofDonation,
+  donorName,
+  donorEmail,
+  donorPhone,
+  fundraisingId,
+  fromRegistration // 👈 NEW FLAG
+} = req.body;
+
+const userId = req.user?._id || null;
+
 
     console.log("🔍 Extracted:", { amount, modeofDonation, donorName, donorEmail, donorPhone, fundraisingId });
 
@@ -191,7 +201,7 @@ export const createDonationOrder = async (req, res) => {
       amount: Math.round(amount * 100),
       currency: "INR",
       receipt: "donation_" + Date.now(),
-      notes: { userId, modeofDonation, donorName, donorEmail, fundraisingId },
+      notes: { fromRegistration, userId, modeofDonation, donorName, donorEmail, fundraisingId },
     };
 
     const order = await razorpay.orders.create(options);
@@ -231,7 +241,7 @@ export const createDonationOrder = async (req, res) => {
 export const verifyDonationPayment = async (req, res) => {
     try {
 
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature,fromRegistration } = req.body;
 
         // Verify the payment signature
         const sign = razorpay_order_id + "|" + razorpay_payment_id;
@@ -255,6 +265,26 @@ export const verifyDonationPayment = async (req, res) => {
         donation.razorpaySignature = razorpay_signature;
         donation.paymentStatus = "completed";
         await donation.save();
+
+        // 🔥 IF PAYMENT CAME FROM REGISTRATION PAGE
+if (fromRegistration === true) {
+  const existing = await DonationReg.findOne({
+    email: donation.donorEmail,
+    status: "pending"
+  });
+
+  if (!existing) {
+    await DonationReg.create({
+      name: donation.donorName,
+      email: donation.donorEmail,
+      contactNumber: donation.donorPhone,
+      donationAmount: donation.amount,
+      fundraisingId: donation.fundraisingId || null,
+      status: "pending"
+    });
+  }
+}
+
  // ⭐ STEP-3: UPDATE FUNDRAISING PROGRESS
         if (donation.fundraisingId) {
             const Fund = await import('../../model/fundraising/fundraising.js').then(m => m.default);
@@ -299,44 +329,29 @@ export const verifyDonationPayment = async (req, res) => {
 
 // Get user donations with total amount
 export const getUserDonations = async (req, res) => {
-    try {
-        const userId = req.user._id;
+  try {
+    const userId = req.user._id; // ✅ pehle declare
 
-        // Get all donations for the user
-        const donations = await Donation.find({ userId })
-            .select('amount paymentStatus donorName donorEmail donorPhone modeofDonation createdAt')
-            .sort({ createdAt: -1 }); // Latest donations first
+    console.log("🔐 Logged-in userId:", userId);
 
-        // Calculate total amount from completed donations only
-        const totalAmount = donations
-            .filter(donation => donation.paymentStatus === 'completed')
-            .reduce((sum, donation) => sum + donation.amount, 0);
+    const donations = await Donation.find({
+      userId,
+      paymentStatus: "completed",
+    }).sort({ createdAt: -1 });
 
-        // Count total donations
-        const totalDonations = donations.length;
-        const completedDonations = donations.filter(donation => donation.paymentStatus === 'completed').length;
-        const pendingDonations = donations.filter(donation => donation.paymentStatus === 'pending').length;
-
-        res.json({
-            success: true,
-            data: {
-                donations,
-                summary: {
-                    totalAmount,
-                    totalDonations,
-                    completedDonations,
-                    pendingDonations
-                }
-            }
-        });
-
-    } catch (error) {
-        res.status(500).json({ 
-            success: false,
-            error: error.message 
-        });
-    }
+    return res.json({
+      success: true,
+      donations,
+    });
+  } catch (error) {
+    console.error("❌ getUserDonations error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };
+
 
 // Get real-time donor statistics
 export const getDonorStats = async (req, res) => {
@@ -396,4 +411,30 @@ export const emitDonorUpdate = (io, userId, updateType, data) => {
         data,
         timestamp: new Date()
     });
+};
+// ===============================
+// ADMIN : GET ALL DONATIONS
+// ===============================
+export const getAllDonationsForAdmin = async (req, res) => {
+  try {
+    const donations = await Donation.find()
+      .populate({
+        path: "userId",
+        select: "fullName email",
+        options: { strictPopulate: false }
+      })
+      // .populate("fundraisingId", "title")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: donations
+    });
+  } catch (error) {
+    console.error("ADMIN DONATION ERROR:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 };

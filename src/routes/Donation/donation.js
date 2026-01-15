@@ -111,7 +111,8 @@ import {
   verifyDonationPayment,
   getUserDonations,
   getDonorStats,
-  getRecentDonations
+  getRecentDonations,
+  getAllDonationsForAdmin,
 } from "../../controller/Donation/donation.js";
 
 const router = express.Router();
@@ -131,16 +132,15 @@ router.post(
    DONATION / PAYMENT
    =============================== */
 // cash / cheque / razorpay order
-router.post(
-  "/create-order",
-  requireAuth,
-  createDonationOrder
-);
-
+// router.post(
+//   "/create-order",
+//   requireAuth,
+//   createDonationOrder
+// );
+router.post("/create-order", createDonationOrder);
 // razorpay payment verification
 router.post(
   "/verify-payment",
-  requireAuth,
   verifyDonationPayment
 );
 
@@ -167,5 +167,15 @@ router.get(
   requireAuth,
   getRecentDonations
 );
+router.get(
+  "/admin/donations",
+  requireAuth,
+  getAllDonationsForAdmin
+);
+// router.get(
+//   "/history",
+//   requireAuth,      // ❌ bina login → access nahi
+//   getUserDonations
+// );
 
 export default router;

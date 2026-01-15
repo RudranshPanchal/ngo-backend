@@ -8,11 +8,12 @@ import Donation from "../../model/Donation/donation.js"; // 🔥 ADD THIS
 import {
   registerDonor,
   getDonorProfile,
-  getDonorHistory,
+
   getDonorDashboard,
   getAllDonors,
   getPendingDonors,
   getSingleDonor,
+  updateDonorProfile,
   // approveDonor,
   // rejectDonor,
     updateDonorStatus,
@@ -53,12 +54,6 @@ donorRouter.get(
   getDonorProfile
 );
 
-/* ================= DONATION HISTORY ================= */
-donorRouter.get(
-  "/history",
-  requireAuth,
-  getDonorHistory
-);
 
 /* ================= DONOR DASHBOARD ================= */
 donorRouter.get(
@@ -94,5 +89,6 @@ donorRouter.post(
   requireAdmin,
   updateDonorStatus
 );
-
+donorRouter.get("/profile", requireAuth, getDonorProfile);
+donorRouter.put("/update-profile", requireAuth, updateDonorProfile);
 export default donorRouter;
