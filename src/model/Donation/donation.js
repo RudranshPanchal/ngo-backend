@@ -29,7 +29,10 @@ const donationSchema = new mongoose.Schema({
         type: String,
         required: false
     },
-    
+    fundraisingId: { 
+  type: mongoose.Schema.Types.ObjectId,
+  required: false
+},
     razorpaySignature: {
         type: String,
         required: false
