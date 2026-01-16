@@ -896,6 +896,7 @@ import Donation from "../../model/Donation/donation.js";
 import { sendSignupOtpEmail } from "../../utils/mail.js";
 import SignupOtp from "../../model/SignupOtp/SignupOtp.js";
 import PhoneOtp from "../../model/PhoneOtp/PhoneOtp.js";
+import Notification from "../../model/Notification/notification.js";
 
 
 // export const register = async (req, res) => {
@@ -998,6 +999,20 @@ export const register = async (req, res) => {
 
         // ✅ CLEANUP OTP RECORD
         await SignupOtp.deleteOne({ email });
+
+        // 🔔 SAVE & SEND NOTIFICATION (Database + Real-time)
+        const newNotification = await Notification.create({
+            userType: "admin",
+            message: `New ${user.role} registered: ${user.fullName}`,
+            type: "registration",
+            role: user.role,
+            read: false
+        });
+
+        const io = req.app.get("io");
+        if (io) {
+            io.to("admins").emit("admin-notification", newNotification);
+        }
 
         return res.status(201).json({
             message: "Registration successful",
