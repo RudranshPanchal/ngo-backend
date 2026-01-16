@@ -240,20 +240,26 @@ const userId = req.user?._id || null;
 // Verify Razorpay payment
 export const verifyDonationPayment = async (req, res) => {
     try {
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature, fromRegistration } = req.body;
 
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature,fromRegistration } = req.body;
+        // FIX: Wahi secret use karein jo initialize karte waqt define kiya tha
+        const secret = process.env.RAZORPAY_KEY_SECRET || '3hv6ZUhPh9gIPTA4uX6jEDM8';
 
         // Verify the payment signature
         const sign = razorpay_order_id + "|" + razorpay_payment_id;
         const expectedSignature = crypto
-            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+            .createHmac("sha256", secret) // Yahan 'secret' variable use karein
             .update(sign.toString())
             .digest("hex");
 
         if (expectedSignature !== razorpay_signature) {
+            console.log("❌ Signature Mismatch!");
+            console.log("Expected:", expectedSignature);
+            console.log("Received:", razorpay_signature);
             return res.status(400).json({ message: "Payment verification failed" });
         }
-
+        
+        // ... baki ka code same rahega
         // Find the donation record by order ID
         const donation = await Donation.findOne({ razorpayOrderId: razorpay_order_id });
         if (!donation) {
@@ -330,28 +336,22 @@ if (fromRegistration === true) {
 // Get user donations with total amount
 export const getUserDonations = async (req, res) => {
   try {
-    const userId = req.user._id; // ✅ pehle declare
-
-    console.log("🔐 Logged-in userId:", userId);
-
-    const donations = await Donation.find({
-      userId,
-      paymentStatus: "completed",
+    const userId = req.user._id; 
+    
+    // Yahan Donation collection se data uthega
+    const donations = await Donation.find({ 
+      userId: userId,
+      paymentStatus: "completed" 
     }).sort({ createdAt: -1 });
 
     return res.json({
       success: true,
-      donations,
+      donations: donations // Frontend is key ko map karega
     });
   } catch (error) {
-    console.error("❌ getUserDonations error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 // Get real-time donor statistics
 export const getDonorStats = async (req, res) => {
