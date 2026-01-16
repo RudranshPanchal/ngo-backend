@@ -19,6 +19,8 @@ const notificationSchema = new mongoose.Schema(
     type: {
       type: String, // member-application, donation, approval, etc.
     },
+    
+    role: { type: String },
 
     read: {
       type: Boolean,

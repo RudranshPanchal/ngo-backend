@@ -119,3 +119,9 @@ const getLocalFileUrl = (file) => {
 };
 
 export { getLocalFileUrl, upload, pdfUpload, cloudinaryUpload, cloudinaryPdfUpload, cloudinaryImageUpload, cloudinaryMixedUpload };
+const uploadMemberFiles = upload.fields([
+  { name: "profilePhoto", maxCount: 1 },
+  { name: "governmentIdProof", maxCount: 1 },
+]);
+
+export { uploadMemberFiles };
