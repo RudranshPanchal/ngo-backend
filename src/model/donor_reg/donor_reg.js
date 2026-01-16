@@ -7,28 +7,71 @@ const DonorSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
-    name: { type: String },
-    organisationName: { type: String },
-    contactNumber: { type: String },
-    address: { type: String },
-    email: { type: String },
-    panNumber: { type: String },
-    gstNumber: { type: String },
-    modeofDonation: { type: String },
-    donationAmount: { type: Number, default: 0 },
-    donationFrequency: { type: String },
-    consentForUpdate: { type: String },
-    uploadPaymentProof: { type: String },
+
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    organisationName: String,
+
+    contactNumber: {
+      type: String,
+      required: true,
+    },
+
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
+    },
+
+    address: String,
+
+    // ✅ VERIFICATION FLAGS (IMPORTANT)
+    isPhoneVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    panNumber: String,
+    gstNumber: String,
+
+    donationAmount: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+
+    modeofDonation: String,
+
+    uploadPaymentProof: String,
+
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
+
+    approvedAt: Date,
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
     fundraisingId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Fundraising",
-      required: false,
+      default: null,
     },
   },
-  {
-    timestamps: true, 
-  }
+  { timestamps: true }
 );
-
-const DonationReg = mongoose.model("Donor", DonorSchema);
-export default DonationReg;
+export default mongoose.model("Donor", DonorSchema, "donors");
+// export default mongoose.model("Donor", DonorSchema);

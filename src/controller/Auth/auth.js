@@ -886,7 +886,6 @@
 import mongoose from "mongoose";
 import User from "../../model/Auth/auth.js";
 import Volunteer from "../../model/Volunteer/volunteer.js";
-import Counter from "../../model/counter.js";
 import Certificate from "../../model/Certificate/certificate.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -969,7 +968,15 @@ export const register = async (req, res) => {
         }
 
         const hash = await bcrypt.hash(password, 10);
-        const memberId = "user" + Date.now();
+        // const memberId = "user" + Date.now();
+        const cleanName = (fullName || "member")
+            .toLowerCase()
+            .replace(/\s+/g, "");
+
+        const uniqueSuffix = Math.random().toString(36).substring(2, 6);
+
+        const memberId = `${cleanName}-${uniqueSuffix}`;
+
 
         const user = await User.create({
             fullName,
@@ -1243,61 +1250,43 @@ export const createVolunteerByAdmin = async (req, res) => {
 
         const adminId = req.user._id;
 
-        // 🔐 Check email in BOTH collections
+        // Check email 
         const emailInUser = await User.findOne({ email });
-        const emailInVolunteer = await Volunteer.findOne({ email });
-        if (emailInUser || emailInVolunteer) {
+        // const emailInVolunteer = await Volunteer.findOne({ email });
+        if (emailInUser) {
             return res.status(400).json({ message: "Email already exists" });
         }
 
-        // 🔢 Volunteer ID
-        // const count = await Volunteer.countDocuments();
-        // const volunteerId = `VOL${String(count + 1).padStart(4, "0")}`;
-        const counter = await Counter.findOneAndUpdate(
-            { name: "volunteer" },
-            { $inc: { seq: 1 } },
-            { new: true, upsert: true }
-        );
+        // Volunteer ID
+        const volunteerId = `VOL-${new mongoose.Types.ObjectId().toHexString().slice(-6).toUpperCase()}`;
 
-        const volunteerId = `VOL${String(counter.seq).padStart(4, "0")}`;
+        // Member ID (unchanged logic)
+        // const cleanName = (fullName || "volunteer").toLowerCase().replace(/\s+/g, "");
+        // let memberId = cleanName + (Math.floor(Math.random() * 900) + 100);
 
+        const cleanName = (fullName || "member")
+            .toLowerCase()
+            .replace(/\s+/g, "");
 
-        // 👤 Member ID (unchanged logic)
-        const cleanName = (fullName || "volunteer").toLowerCase().replace(/\s+/g, "");
-        let memberId = cleanName + (Math.floor(Math.random() * 900) + 100);
+        const uniqueSuffix = Math.random().toString(36).substring(2, 6);
+
+        const memberId = `${cleanName}-${uniqueSuffix}`;
 
         const hash = await bcrypt.hash(password, 10);
 
-        // 🧠 Skills normalization
+        // Skills normalization
         const skillsArray = typeof skills === "string"
             ? skills.split(",").map(s => s.trim()).filter(Boolean)
             : Array.isArray(skills) ? skills : [];
 
-        // ☁️ Upload ID proof
+        // Upload ID proof
         let uploadIdProof = null;
         if (req.file) {
             uploadIdProof = await uploadToCloudinary(req.file, "volunteer-id-proofs");
         }
 
-        // 🧾 Create USER first (safer)
-        const user = await User.create({
-            fullName,
-            email,
-            password: hash,
-            role: "volunteer",
-            memberId,
-            tempPassword: true,
-            createdBy: adminId,
-
-            gender, dob, age, contactNumber, address, area, state,
-            profession, skills: skillsArray,
-            areaOfVolunteering, availability,
-            emergencyContactNumber,
-            uploadIdProof
-        });
-
-        // 🧾 Create VOLUNTEER
-        await Volunteer.create({
+        // Create VOLUNTEER
+        const volunteer = await Volunteer.create({
             volunteerId,
             fullName,
             email,
@@ -1313,14 +1302,37 @@ export const createVolunteerByAdmin = async (req, res) => {
             approvedAt: new Date()
         });
 
-        // 📧 Email
-        await sendVolunteerWelcomeEmail({
-            toEmail: email,
+        // Create USER  
+        const user = await User.create({
             fullName,
             email,
-            password,
-            volunteerId
+            password: hash,
+            role: "volunteer",
+            memberId,
+            volunteerRef: volunteer._id,
+            gender, dob, age, contactNumber, address, area, state,
+            profession, skills: skillsArray,
+            areaOfVolunteering, availability,
+            emergencyContactNumber,
+            uploadIdProof,
+
+            tempPassword: true,
+            createdBy: adminId,
         });
+
+        volunteer.userRef = user._id;
+        await volunteer.save();
+
+
+
+        // Email
+        // await sendVolunteerWelcomeEmail({
+        //     toEmail: email,
+        //     fullName,
+        //     email,
+        //     password,
+        //     volunteerId
+        // });
 
         res.status(201).json({
             message: "Volunteer created successfully",
@@ -1345,9 +1357,17 @@ export const createMemberByAdmin = async (req, res) => {
             return res.status(400).json({ message: 'Email already exists' });
         }
 
-        const cleanName = (fullName || 'member').toLowerCase().replace(/\s+/g, '');
-        const randomNumbers = Math.floor(Math.random() * 900) + 100;
-        let memberId = cleanName + randomNumbers;
+        // const cleanName = (fullName || 'member').toLowerCase().replace(/\s+/g, '');
+        // const randomNumbers = Math.floor(Math.random() * 900) + 100;
+        // let memberId = cleanName + randomNumbers;
+
+        const cleanName = (fullName || "member")
+            .toLowerCase()
+            .replace(/\s+/g, "");
+        const uniqueSuffix = Math.random().toString(36).substring(2, 6);
+
+        const memberId = `${cleanName}-${uniqueSuffix}`;
+
 
         const existingMemberId = await User.findOne({ memberId });
         if (existingMemberId) {
@@ -1447,9 +1467,6 @@ export const getAllMembers = async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 }
-
-
-
 
 export const givenCerification = async (req, res) => {
     try {
@@ -1797,8 +1814,8 @@ export const sendSignupOtp = async (req, res) => {
             { upsert: true, new: true }
         );
 
-        await sendSignupOtpEmail({ toEmail: email, fullName, otp });
-        console.log("✉️ EMAIL OTP:", otp);
+        // await sendSignupOtpEmail({ toEmail: email, fullName, otp });
+        // console.log("✉️ EMAIL OTP:", otp);
 
         return res.status(200).json({ message: "OTP sent successfully" });
 
@@ -1914,18 +1931,19 @@ export const sendEmailVerificationOtp = async (req, res) => {
             return res.status(400).json({ message: "Email already verified" });
         }
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        // const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = 123456;
 
         user.emailOtp = otp;
         user.emailOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
         await user.save();
 
-        await sendSignupOtpEmail({
-            toEmail: user.email,
-            fullName: user.fullName,
-            otp
-        });
+        // await sendSignupOtpEmail({
+        //     toEmail: user.email,
+        //     fullName: user.fullName,
+        //     otp
+        // });
 
         console.log("📧 EMAIL OTP:", otp);
 
@@ -2044,7 +2062,8 @@ export const sendPhoneVerificationOtp = async (req, res) => {
             return res.status(400).json({ message: "Phone already verified" });
         }
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        // const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = 123456;
 
         user.phoneOtp = otp;
         user.phoneOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
