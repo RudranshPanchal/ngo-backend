@@ -2,7 +2,7 @@ import DonationReg from "../../model/donor_reg/donor_reg.js";
 import Donation from "../../model/Donation/donation.js";
 import User from "../../model/Auth/auth.js";
 import bcrypt from "bcrypt";
-import { sendDonorWelcomeEmail } from "../../utils/mail.js";
+// import { sendDonorWelcomeEmail } from "../../utils/mail.js";
 const generateDonorPassword = (name, mobile) => {
   if (!name || !mobile) return null;
 
@@ -222,18 +222,22 @@ console.log(password);
         user.tempPassword = true;
         await user.save();
       }
-
+await Donation.findOneAndUpdate(
+  { donorEmail: donor.email, userId: null }, 
+ { $set: { userId: user._id } },// User ID ko null se badal kar actual ID set karein
+  { sort: { createdAt: -1 } } // Sabse latest donation update karein
+);
       // 2. Create Donation Record (Important)
-      await Donation.create({
-        userId: user._id,
-        amount: donor.donationAmount,
-        modeofDonation: donor.modeofDonation || "bankTransfer",
-        paymentStatus: "completed",
-        donorName: donor.name,
-        donorEmail: donor.email,
-        donorPhone: donor.contactNumber,
-        fundraisingId: donor.fundraisingId,
-      });
+      // await Donation.create({
+      //   userId: user._id,
+      //   amount: donor.donationAmount,
+      //   modeofDonation: donor.modeofDonation || "bankTransfer",
+      //   paymentStatus: "completed",
+      //   donorName: donor.name,
+      //   donorEmail: donor.email,
+      //   donorPhone: donor.contactNumber,
+      //   fundraisingId: donor.fundraisingId,
+      // });
 
       // 3. Update Donor Request (SAVE LAST to prevent partial updates)
       donor.userId = user._id;
@@ -245,12 +249,12 @@ console.log(password);
 
       // 4. Send Email
       try {
-        await sendDonorWelcomeEmail({
-          toEmail: user.email,
-          fullName: user.fullName,
-          email: user.email,
-          password: finalPassword
-          });
+      //   await sendDonorWelcomeEmail({
+      //     toEmail: user.email,
+      //     fullName: user.fullName,
+      //     email: user.email,
+      //     password: finalPassword
+      //     });
       } catch (mailError) {
         console.error("Mail sending failed:", mailError);
       }
