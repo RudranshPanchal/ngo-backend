@@ -351,18 +351,25 @@ export const getDonorProfile = async (req, res) => {
 /* ================= UPDATE DONOR PROFILE ================= */
 export const updateDonorProfile = async (req, res) => {
   try {
+    const userId = req.user._id;
     const update = {};
     if (req.body.panNumber) update.panNumber = req.body.panNumber;
     if (req.body.gstNumber) update.gstNumber = req.body.gstNumber;
     if (req.body.address) update.address = req.body.address;
+    if (req.body.contactNumber) update.contactNumber = req.body.contactNumber;
+    if (req.body.organisationName) update.organisationName = req.body.organisationName;
 
+    // ✅ 1. Update User Collection (Critical for Receipt & Login)
+    await User.findByIdAndUpdate(userId, { $set: update });
+
+    // ✅ 2. Update DonationReg (if exists)
     const donor = await DonationReg.findOneAndUpdate(
-      { userId: req.user._id },
+      { userId: userId },
       { $set: update },
       { new: true }
     );
 
-    res.json({ success: true, data: donor });
+    res.json({ success: true, data: donor || update });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

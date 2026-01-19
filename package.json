@@ -37,6 +37,7 @@
     "qrcode": "^1.5.4",
     "razorpay": "^2.9.6",
     "socket.io": "^4.8.1",
+    "to-words": "^4.10.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
