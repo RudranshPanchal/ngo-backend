@@ -63,7 +63,7 @@ export const createAuditPDF = async (req, res) => {
             // auditorSigBase64,
             // presidentSigBase64,
             presidentName
-        });
+        }, "audit");
 
         res.set({
             "Content-Type": "application/pdf",

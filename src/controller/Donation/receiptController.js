@@ -1,72 +1,39 @@
 import PDFDocument from "pdfkit";
-import DonationReg from "../../model/donor_reg/donor_reg.js";
+import Donation from "../../model/Donation/donation.js"; // Sahi model use karein
 
 export const generateReceipt = async (req, res) => {
   try {
     const donationId = req.params.id;
+    const donation = await Donation.findById(donationId);
 
-    const donation = await DonationReg.findById(donationId).populate("userId");
-
-    if (!donation) {
-      return res.status(404).json({ message: "Donation not found" });
-    }
+    if (!donation) return res.status(404).json({ message: "Donation not found" });
 
     const doc = new PDFDocument({ size: "A4", margin: 50 });
-
+    
+    // PDF Header for Browser
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=Donation_Receipt_${donation._id}.pdf`
-    );
+    res.setHeader("Content-Disposition", `attachment; filename=80G_Receipt_${donation._id}.pdf`);
 
     doc.pipe(res);
 
-    /* ===== HEADER ===== */
-    doc
-      .fontSize(22)
-      .text("ORBOSIS FOUNDATION", { align: "center" })
-      .moveDown(0.5);
-
-    doc
-      .fontSize(14)
-      .text("Donation Receipt", { align: "center" })
-      .moveDown(2);
-
-    /* ===== RECEIPT INFO ===== */
-    doc.fontSize(12);
-    // doc.text(`Receipt ID: ${donation._id}`);
+    // Layout Logic (Aapka existing layout code yahan aayega)
+    doc.fontSize(22).text("ORBOSIS FOUNDATION", { align: "center" }).moveDown();
+    doc.fontSize(14).text("80G TAX EXEMPTION RECEIPT", { align: "center" }).moveDown(2);
+    
+    doc.fontSize(12).text(`Receipt No: ${donation.razorpayPaymentId || donation._id}`);
     doc.text(`Date: ${new Date(donation.createdAt).toLocaleDateString()}`);
     doc.moveDown();
 
-    /* ===== DONOR INFO ===== */
-    doc.text(`Donor Name: ${donation.name}`);
-    doc.text(`Email: ${donation.email}`);
-    doc.text(`Contact: ${donation.contactNumber}`);
+    doc.text(`Donor Name: ${donation.donorName}`);
+    doc.text(`Email: ${donation.donorEmail}`);
+    doc.text(`PAN Number: ${donation.panNumber || "N/A"}`); // Ensure PAN is in your model
     doc.moveDown();
 
-    /* ===== DONATION INFO ===== */
-    doc.fontSize(13).text("Donation Details", { underline: true });
-    doc.moveDown(0.5);
-
-    doc.fontSize(12);
-    doc.text(`Amount: ₹${donation.donationAmount}`);
-    doc.text(
-      `Type: ${donation.fundraisingId ? "Fundraising Donation" : "General Donation"}`
-    );
-    doc.text("Payment Mode: UPI / Bank Transfer");
-    doc.moveDown(2);
-
-    /* ===== FOOTER ===== */
-    doc
-      .fontSize(10)
-      .text(
-        "This is a system generated receipt. No signature required.",
-        { align: "center" }
-      );
-
+    doc.fontSize(13).text(`Amount Received: ₹${donation.amount}`, { bold: true });
+    doc.fontSize(10).text("Thank you for your generous contribution.", { align: 'center' }).moveDown();
+    
     doc.end();
   } catch (error) {
-    console.error("❌ Receipt error:", error);
-    res.status(500).json({ message: "Receipt generation failed" });
+    res.status(500).json({ message: "Failed to generate PDF" });
   }
 };

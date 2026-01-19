@@ -104,7 +104,9 @@
 import express from "express";
 import { requireAuth, optionalAuth } from "../../middleware/auth.js";
 import { upload } from "../../utils/multer.js";
-
+import { generateReceipt } from "../../controller/Donation/receiptController.js";
+import path from "path";
+import fs from "fs";
 import {
   registerDonor,
   createDonationOrder,
@@ -113,8 +115,9 @@ import {
   getDonorStats,
   getRecentDonations,
   getAllDonationsForAdmin,
+  updateDonorProfile
 } from "../../controller/Donation/donation.js";
-
+import Donation from "../../model/Donation/donation.js";
 const router = express.Router();
 
 /* ===============================
@@ -137,7 +140,8 @@ router.post(
 //   requireAuth,
 //   createDonationOrder
 // );
-router.post("/create-order", createDonationOrder);
+router.post("/create-order", optionalAuth, createDonationOrder);
+router.put("/update-profile", requireAuth, updateDonorProfile);
 // razorpay payment verification
 router.post(
   "/verify-payment",
@@ -172,6 +176,36 @@ router.get(
   requireAuth,
   getAllDonationsForAdmin
 );
+// routes/Donor/donor.js
+// Is route ko apne routes file mein check karo ya add karo
+
+router.get("/receipt/:id", async (req, res) => {
+    try {
+        // Yahan 'Donation' use ho raha hai, isliye upar import hona zaroori hai
+        const donation = await Donation.findById(req.params.id);
+
+        if (!donation || !donation.receiptUrl) {
+            console.error("❌ Receipt URL missing in DB");
+            return res.status(404).json({ message: "Receipt not found in database" });
+        }
+
+        // process.cwd() se absolute path banta hai
+        const filePath = path.join(process.cwd(), donation.receiptUrl);
+
+        console.log("📂 Attempting to send file from:", filePath);
+
+        if (fs.existsSync(filePath)) {
+            // res.download file ko force download karwayega
+            return res.download(filePath, `Receipt-${donation._id}.pdf`);
+        } else {
+            console.error("❌ Physical file missing on server at:", filePath);
+            return res.status(404).json({ message: "File missing on server" });
+        }
+    } catch (err) {
+        console.error("❌ Route Error:", err.message); // Yahan 'Donation is not defined' aa raha tha
+        res.status(500).json({ error: err.message });
+    }
+});
 // router.get(
 //   "/history",
 //   requireAuth,      // ❌ bina login → access nahi
