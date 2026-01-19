@@ -260,6 +260,7 @@ import auditPdfRoutes from "./src/routes/AuditReport/pdf.routes.js";
 import eventRouter from "./src/routes/Event/event.js";
 import { log } from "console";
 import notificationRouter from "./src/routes/Notification/notification.js";
+import taskRouter from "./src/routes/Task/task.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -291,7 +292,7 @@ app.use(
       }
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -439,6 +440,7 @@ app.get("/data", async (req, res) => {
 // Events
 app.use("/api/event", eventRouter);
 app.use("/api/notification", notificationRouter);
+app.use("/api/task", taskRouter);
 
 // Audit Report
 app.use("/api/report", auditReportRoutes);

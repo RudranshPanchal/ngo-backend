@@ -233,3 +233,41 @@ export const unregisterFromEvent = async (req, res) => {
         res.status(500).json({ message: "Unregistration failed", error: err.message });
     }
 };
+
+export const getEventParticipants = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const event = await Event.findById(id).populate("participants", "fullName email contactNumber skills");
+
+        if (!event) {
+            return res.status(404).json({ message: "Event not found" });
+        }
+
+        res.status(200).json({
+            success: true,
+            count: event.participants.length,
+            data: event.participants
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Failed to fetch participants", error: error.message });
+    }
+};
+
+export const getEventById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const event = await Event.findById(id).populate("createdBy", "fullName");
+
+        if (!event) {
+            return res.status(404).json({ message: "Event not found" });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: event
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Failed to fetch event details", error: error.message });
+    }
+};
