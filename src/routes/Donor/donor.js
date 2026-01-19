@@ -41,11 +41,11 @@ donorRouter.post(
 );
 
 /* ================= RECEIPT ================= */
-donorRouter.get(
-  "/receipt/:id",
-  requireAuth,
-  generateReceipt
-);
+// donorRouter.get(
+//   "/receipt/:id",
+//   requireAuth,
+//   generateReceipt
+// );
 
 /* ================= DONOR PROFILE ================= */
 donorRouter.get(
