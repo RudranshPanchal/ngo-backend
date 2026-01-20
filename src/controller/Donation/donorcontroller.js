@@ -2,6 +2,7 @@ import DonationReg from "../../model/donor_reg/donor_reg.js";
 import Donation from "../../model/Donation/donation.js";
 import User from "../../model/Auth/auth.js";
 import bcrypt from "bcrypt";
+import Notification from "../../model/Notification/notification.js";
 // import { sendDonorWelcomeEmail } from "../../utils/mail.js";
 const generateDonorPassword = (name, mobile) => {
   if (!name || !mobile) return null;
@@ -60,6 +61,21 @@ export const registerDonor = async (req, res) => {
           Number(req.body.donationAmount || 0);
         await fundItem.save();
       }
+    }
+
+    // 🔔 SAVE & SEND NOTIFICATION (Database + Real-time)
+    const newNotification = await Notification.create({
+        userType: "admin",
+        message: `New donor registration from ${req.body.fullName} for ₹${req.body.donationAmount}.`,
+        type: "donor-registration",
+        role: "donor",
+        read: false
+    });
+
+    const io = req.app.get("io");
+    if (io) {
+        io.to("admins").emit("admin-notification", newNotification);
+        console.log('🔔 Admin notification sent for new donor registration.');
     }
 
     return res.json({

@@ -115,9 +115,16 @@ import {
   getDonorStats,
   getRecentDonations,
   getAllDonationsForAdmin,
-  updateDonorProfile
+  updateDonorProfile,
+  getActiveDonorsFromUserCollection,
+  getDonorById
 } from "../../controller/Donation/donation.js";
 import Donation from "../../model/Donation/donation.js";
+import https from "https";
+import { generatePDFBuffer } from "../../services/pdf.service.js";
+import { NGO_80G } from "../../config/ngo.config.js";
+import { numberToWords } from "../../utils/numberToWords.js";
+import cloudinary from "../../config/cloudinary.js";
 const router = express.Router();
 
 /* ===============================
@@ -176,10 +183,20 @@ router.get(
   requireAuth,
   getAllDonationsForAdmin
 );
+router.get(
+  "/admin/active-donors",
+  requireAuth,
+  getActiveDonorsFromUserCollection
+);
+router.get(
+  "/admin/donors/:id",
+  requireAuth,
+  getDonorById
+);
 // routes/Donor/donor.js
 // Is route ko apne routes file mein check karo ya add karo
 
-router.get("/receipt/:id", async (req, res) => {
+router.get("/receipt/:id", requireAuth, async (req, res) => {
     try {
         // Yahan 'Donation' use ho raha hai, isliye upar import hona zaroori hai
         const donation = await Donation.findById(req.params.id);
@@ -187,6 +204,40 @@ router.get("/receipt/:id", async (req, res) => {
         if (!donation || !donation.receiptUrl) {
             console.error("❌ Receipt URL missing in DB");
             return res.status(404).json({ message: "Receipt not found in database" });
+        }
+
+        // Security Check: Ensure user owns this donation
+        if (donation.userId && req.user && donation.userId.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: "Forbidden: You are not authorized to view this receipt." });
+        }
+
+        // Check if URL is from Cloudinary (starts with http)
+        if (donation.receiptUrl.startsWith("http")) {
+            const secureUrl = donation.receiptUrl.replace("http://", "https://");
+            
+            // Helper function to follow redirects (Cloudinary often redirects)
+            const fetchUrl = (url) => {
+                https.get(url, (stream) => {
+                    // Handle Redirects (301, 302)
+                    if (stream.statusCode >= 300 && stream.statusCode < 400 && stream.headers.location) {
+                        return fetchUrl(stream.headers.location);
+                    }
+
+                    if (stream.statusCode !== 200) {
+                        console.error(`Cloudinary Fetch Failed: ${stream.statusCode} for URL: ${url}`);
+                        stream.resume(); 
+                        return res.status(404).json({ message: "Receipt file not found on cloud" });
+                    }
+                    res.setHeader('Content-Type', 'application/pdf');
+                    res.setHeader('Content-Disposition', `attachment; filename=Receipt-${donation._id}.pdf`);
+                    stream.pipe(res);
+                }).on('error', (err) => {
+                    console.error("Cloudinary Stream Error:", err);
+                    res.status(500).json({ message: "Failed to fetch receipt" });
+                });
+            };
+
+            return fetchUrl(secureUrl);
         }
 
         // process.cwd() se absolute path banta hai

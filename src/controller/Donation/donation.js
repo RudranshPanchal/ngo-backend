@@ -13,6 +13,7 @@ import { NGO_80G } from "../../config/ngo.config.js";
 import { numberToWords } from "../../utils/numberToWords.js";
 import Counter from "../../model/Counter/counter.js";
 import { uploadToCloudinary } from "../../utils/uploader.js";
+import Notification from "../../model/Notification/notification.js";
 
 
 dotenv.config();
@@ -87,6 +88,21 @@ export const registerDonor = async (req, res) => {
         }
       });
       console.log("✅ User profile updated with PAN, Address and Phone");
+    }
+
+    // 🔔 SAVE & SEND NOTIFICATION (Database + Real-time)
+    const newNotification = await Notification.create({
+        userType: "admin",
+        message: `New donor registration from ${fullName} for ₹${donationAmount}.`,
+        type: "donor-registration",
+        role: "donor",
+        read: false
+    });
+
+    const io = req.app.get("io");
+    if (io) {
+        io.to("admins").emit("admin-notification", newNotification);
+        console.log('🔔 Admin notification sent for new donor registration.');
     }
 
     return res.json({
@@ -294,6 +310,23 @@ const receiptData = {
             await donation.save();
         }
 
+        // 🔔 SAVE & SEND NOTIFICATION (Database + Real-time)
+        if (donation.paymentStatus === "completed") {
+            const newNotification = await Notification.create({
+                userType: "admin",
+                message: `New donation of ₹${donation.amount} received from ${donation.donorName}.`,
+                type: "donation",
+                role: "donor",
+                read: false
+            });
+
+            const io = req.app.get("io");
+            if (io) {
+                io.to("admins").emit("admin-notification", newNotification);
+                console.log('🔔 Admin notification sent for new donation.');
+            }
+        }
+
         // 7. Success Response
         res.json({ 
             success: true, 
@@ -411,6 +444,89 @@ export const getAllDonationsForAdmin = async (req, res) => {
     });
   }
 };
+
+// ===============================
+// ADMIN : GET ACTIVE DONORS (FROM USER COLLECTION)
+// ===============================
+export const getActiveDonorsFromUserCollection = async (req, res) => {
+  try {
+    const donors = await User.find({ role: "donor" }).sort({ createdAt: -1 });
+
+    // Map to match the structure expected by the frontend table
+    const formattedDonors = donors.map(user => ({
+      _id: user._id,
+      donorName: user.fullName,
+      donorEmail: user.email,
+      amount: 0, // Placeholder for user list
+      modeofDonation: "Registered",
+      paymentStatus: "Active",
+      receiptUrl: null,
+      createdAt: user.createdAt
+    }));
+
+    res.json({ success: true, data: formattedDonors });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ===============================
+// ADMIN : GET SINGLE DONOR DETAILS (BY USER ID OR DONATION ID)
+// ===============================
+export const getDonorById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // 1. Try finding in User collection (Active Donor)
+    let donor = await User.findById(id).lean();
+    let totalDonationAmount = 0;
+
+    if (donor) {
+      const donations = await Donation.find({ userId: donor._id, paymentStatus: 'completed' });
+      totalDonationAmount = donations.reduce((sum, d) => sum + (d.amount || 0), 0);
+    } else {
+      // 2. If not found, try finding in Donation collection (Transaction)
+      const donation = await Donation.findById(id);
+      if (donation) {
+        if (donation.userId) {
+          donor = await User.findById(donation.userId).lean();
+          if (donor) {
+            const donations = await Donation.find({ userId: donor._id, paymentStatus: 'completed' });
+            totalDonationAmount = donations.reduce((sum, d) => sum + (d.amount || 0), 0);
+          }
+        } 
+        
+        if (!donor) {
+          // Fallback for guest donations (construct a temporary donor object)
+          const donations = await Donation.find({ donorEmail: donation.donorEmail, paymentStatus: 'completed' });
+          totalDonationAmount = donations.reduce((sum, d) => sum + (d.amount || 0), 0);
+
+          donor = {
+            _id: null,
+            fullName: donation.donorName,
+            email: donation.donorEmail,
+            contactNumber: donation.donorPhone,
+            address: donation.address,
+            panNumber: donation.panNumber,
+            role: "Guest Donor"
+          };
+        }
+      }
+    }
+
+    if (!donor) {
+      return res.status(404).json({ success: false, message: "Donor details not found" });
+    }
+
+    donor.totalDonationAmount = totalDonationAmount;
+
+    res.json({ success: true, data: donor });
+  } catch (error) {
+    console.error("Get Donor Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 /* ================= UPDATE SIGNUP USER PROFILE ================= */
 export const updateDonorProfile = async (req, res) => {
   try {
