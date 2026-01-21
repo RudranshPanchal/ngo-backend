@@ -261,6 +261,7 @@ import eventRouter from "./src/routes/Event/event.js";
 import { log } from "console";
 import notificationRouter from "./src/routes/Notification/notification.js";
 import taskRouter from "./src/routes/Task/task.js";
+import fundraiserRoutes from "./src/routes/Fundraiser/fundraiser.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -306,6 +307,7 @@ const io = new Server(server, {
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use("/api/fundraiser", fundraiserRoutes);
 
 // Request logging middleware
 app.use((req, res, next) => {
