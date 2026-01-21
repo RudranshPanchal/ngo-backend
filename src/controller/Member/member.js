@@ -333,7 +333,7 @@ export const issueIdCard = async (req, res) => {
         title: "ID Card Issued",
         message:
           "Your member ID card has been issued and is ready for download.",
-        redirectUrl: "/member-documents",
+        redirectUrl: "/member-documents", // Redirect to documents page
         read: false,
       });
 
@@ -616,7 +616,7 @@ export const issueAppointmentLetter = async (req, res) => {
         type: "appointment_letter",
         title: "Appointment Letter Issued",
         message: `Your appointment letter has been issued and is ready for download.`,
-        redirectUrl: "/member-documents",
+        redirectUrl: "/member-documents", // Redirect to documents page
         read: false,
       });
 
@@ -821,7 +821,7 @@ export const issueMembershipCertificate = async (req, res) => {
         type: "certificate",
         title: "Membership Certificate Issued",
         message: "Your official membership certificate has been issued.",
-        redirectUrl: "/member-documents",
+        redirectUrl: "/member-documents", // Redirect to documents page
         read: false,
       });
 
@@ -1162,6 +1162,7 @@ export const updateMemberStatus = async (req, res) => {
             type: "membership_approved",
             title: "Membership Approved",
             message: "Congratulations! Your membership has been approved.",
+            redirectUrl: "/member-dashboard",
             read: false,
           });
 
