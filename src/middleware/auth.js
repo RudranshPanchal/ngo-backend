@@ -58,6 +58,7 @@ async function requireAuth(req, res, next) {
       : null;
 
     if (!token) {
+      console.log("❌ [Auth] No token provided in header");
       return res.status(401).json({ message: 'Authentication required' });
     }
 
@@ -69,12 +70,14 @@ async function requireAuth(req, res, next) {
     const user = await User.findById(decoded.userId).select('-password');
 
     if (!user) {
+      console.log("❌ [Auth] User not found in DB for ID:", decoded.userId);
       return res.status(401).json({ message: 'Invalid token' });
     }
 
     req.user = user;
     next();
   } catch (error) {
+    console.error("❌ [Auth] Verification Error:", error.message);
     return res.status(401).json({
       message: 'Unauthorized',
       error: error.message

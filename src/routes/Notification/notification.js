@@ -2,6 +2,8 @@ import express from "express";
 import {
   getAdminNotifications,
   markAllAsRead,
+  getMemberNotifications,
+  markNotificationAsRead,
 } from "../../controller/Notification/notification.js";
 import { requireAuth, requireAdmin } from "../../middleware/auth.js";
 
@@ -12,11 +14,12 @@ router.get("/test", (req, res) => {
   res.json({ ok: true });
 });
 
-// ✅ GET ADMIN NOTIFICATIONS
+// ✅ ADMIN NOTIFICATIONS
 router.get("/admin", getAdminNotifications);
-// (baad me secure karna ho to requireAuth, requireAdmin add kar sakte ho)
-
-// ✅ MARK ALL AS READ
 router.put("/admin/read", requireAuth, requireAdmin, markAllAsRead);
+
+// ✅ MEMBER NOTIFICATIONS
+router.get("/member", requireAuth, getMemberNotifications);
+router.put("/:id/read", requireAuth, markNotificationAsRead);
 
 export default router;

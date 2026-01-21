@@ -1,198 +1,204 @@
 import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema({
-
+const userSchema = new mongoose.Schema(
+  {
     // ----for member -----//
 
     fullName: {
-        type: String,
+      type: String,
     },
 
     gender: {
-        type: String
+      type: String,
     },
 
     age: {
-        type: Number
+      type: Number,
     },
 
     contactNumber: {
-        type: String
+      type: String,
     },
 
     address: {
-        type: String
+      type: String,
     },
 
     area: {
-        type: String
+      type: String,
     },
 
     state: {
-        type: String
+      type: String,
     },
 
     pinCode: {
-        type: String
+      type: String,
     },
 
-    TypesOfSupport: [{
+    TypesOfSupport: [
+      {
         type: String,
-        enum: ["training", "education", "health", "livelihood"]
-    }],
+        enum: ["training", "education", "health", "livelihood"],
+      },
+    ],
 
     govermentIdProof: {
-        type: String
+      type: String,
     },
 
     specialRequirement: {
-        type: String
+      type: String,
     },
 
     email: {
-        type: String,
-        lowercase: true,
-        trim: true
+      type: String,
+      lowercase: true,
+      trim: true,
     },
     password: {
-        type: String,
+      type: String,
     },
 
     dob: {
-        type: String,
+      type: String,
     },
 
     memberId: {
-        type: String,
-        unique: true,
-        index: true
+      type: String,
+      unique: true,
+      index: true,
     },
 
     role: {
-        type: String,
-        enum: ["admin", "volunteer", "donor", "member", "beneficiary"],
-        required: true,
-        default: "donor",
+      type: String,
+      enum: ["admin", "volunteer", "donor", "member", "beneficiary"],
+      required: true,
+      default: "donor",
     },
 
     tempPassword: {
-        type: Boolean,
-        default: false
+      type: Boolean,
+      default: false,
     },
 
     createdBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: false // Not required for initial admin users
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: false, // Not required for initial admin users
     },
-
 
     // ------for volunteer------//
 
     volunteerRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Volunteer",
-        default: null
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Volunteer",
+      default: null,
     },
 
     profession: {
-        type: String
+      type: String,
     },
 
-    skills: [{
-        type: String
-    }],
+    skills: [
+      {
+        type: String,
+      },
+    ],
 
     areaOfVolunteering: {
-        type: String,
-        enum: ["fieldWork", "online", "fundraising", "training"],
-        default: "fieldWork"
+      type: String,
+      enum: ["fieldWork", "online", "fundraising", "training"],
+      default: "fieldWork",
     },
 
     availability: {
-        type: String,
-        enum: ["morning", "afternoon", "evening", "weekend"],
-        default: "morning"
+      type: String,
+      enum: ["morning", "afternoon", "evening", "weekend"],
+      default: "morning",
     },
 
     emergencyContactNumber: {
-        type: String
+      type: String,
     },
 
     uploadIdProof: {
-        type: String
+      type: String,
     },
 
     profilePic: {
-        type: String
+      type: String,
     },
 
     phoneOtp: {
-        type: String,
+      type: String,
     },
 
     phoneOtpExpiresAt: {
-        type: Date,
+      type: Date,
     },
 
     phoneVerified: {
-        type: Boolean,
-        default: false,
+      type: Boolean,
+      default: false,
     },
 
     emailOtp: {
-        type: String,
+      type: String,
     },
 
     emailOtpExpiresAt: {
-        type: Date,
+      type: Date,
     },
 
-    //of signup 
+    //of signup
 
     signupOtp: {
-        type: String,
+      type: String,
     },
 
     signupOtpExpiresAt: {
-        type: Date,
+      type: Date,
     },
 
     emailVerified: {
-        type: Boolean,
-        default: false,
+      type: Boolean,
+      default: false,
     },
 
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
 
     //-------for donor-------//
 
     organisationName: {
-        type: String
+      type: String,
     },
 
     panNumber: {
-        type: String
+      type: String,
     },
 
     gstNumber: {
-        type: String
+      type: String,
     },
 
     // Password reset OTP
     resetOtp: {
-        type: String
+      type: String,
     },
     resetOtpExpiresAt: {
-        type: Date
+      type: Date,
     },
-
-
-}, { timestamps: true });
+  },
+  { timestamps: true }
+);
 
 // restrict entering twice with same email and role
-userSchema.index({ email: 1, role: 1 }, { unique: true })
+userSchema.index({ email: 1, role: 1 }, { unique: true });
 
 const User = mongoose.model("User", userSchema);
-
 
 export default User;

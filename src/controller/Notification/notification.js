@@ -1,61 +1,10 @@
-// // import Notification from "../../model/Notification/notification.js";
-
-// // /**
-// //  * ADMIN – GET ALL NOTIFICATIONS
-// //  */
-// // export const getAdminNotifications = async (req, res) => {
-// //   try {
-// //     const notifications = await Notification.find({ userType: "admin" })
-// //       .sort({ createdAt: -1 })
-// //       .limit(20);
-
-// //     res.json({ success: true, notifications });
-// //   } catch (err) {
-// //     res.status(500).json({ success: false, message: "Server error" });
-// //   }
-// // };
-
-// // /**
-// //  * MARK ALL AS READ
-// //  */
-// // export const markAllAsRead = async (req, res) => {
-// //   try {
-// //     await Notification.updateMany(
-// //       { userType: "admin", read: false },
-// //       { read: true }
-// //     );
-// //     res.json({ success: true });
-// //   } catch (err) {
-// //     res.status(500).json({ success: false });
-// //   }
-// // };
-// import Notification from "../../model/Notification/notification.js";
-
-// export const getAdminNotifications = async (req, res) => {
-//   const notifications = await Notification.find({
-//     userType: "admin"
-//   }).sort({ createdAt: -1 });
-
-//   res.json({
-//     success: true,
-//     notifications
-//   });
-// };
-
-
-// export const markAllAsRead = async (req, res) => {
-//   await Notification.updateMany(
-//     { for: "admin", read: false },
-//     { $set: { read: true } }
-//   );
-
-//   res.json({ success: true });
-// };
 import Notification from "../../model/Notification/notification.js";
+import User from "../../model/Auth/auth.js";
+import Member from "../../model/Member/member.js";
 
 export const getAdminNotifications = async (req, res) => {
   const notifications = await Notification.find({
-    userType: "admin"
+    userType: "admin",
   }).sort({ createdAt: -1 });
 
   res.json({
@@ -67,8 +16,76 @@ export const getAdminNotifications = async (req, res) => {
 export const markAllAsRead = async (req, res) => {
   await Notification.updateMany(
     { userType: "admin", read: false },
-    { $set: { read: true } }
+    { $set: { read: true } },
   );
 
   res.json({ success: true });
+};
+
+// Get member notifications
+export const getMemberNotifications = async (req, res) => {
+  try {
+    const userId = req.user._id; // From auth middleware
+
+    // 1. Get User details to find email
+    const user = await User.findById(userId);
+
+    // 2. Find associated Member profile using email
+    const member = user ? await Member.findOne({ email: user.email }) : null;
+
+    // 3. Search for notifications on BOTH User ID and Member ID
+    const targetIds = [userId];
+    if (member) {
+      targetIds.push(member._id);
+    }
+
+    const notifications = await Notification.find({
+      userType: "member",
+      userId: { $in: targetIds },
+    }).sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      notifications,
+    });
+  } catch (err) {
+    console.error("Get member notifications error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Mark all member notifications as read
+export const markMemberNotificationsAsRead = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+    const member = user ? await Member.findOne({ email: user.email }) : null;
+
+    const targetIds = [userId];
+    if (member) targetIds.push(member._id);
+
+    await Notification.updateMany(
+      { userType: "member", userId: { $in: targetIds }, read: false },
+      { $set: { read: true } }
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Mark all member notifications read error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Mark member notification as read
+export const markNotificationAsRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await Notification.findByIdAndUpdate(id, { read: true });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Mark notification as read error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
 };
