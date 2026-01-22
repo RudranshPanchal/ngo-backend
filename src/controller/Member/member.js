@@ -84,19 +84,35 @@ export const registerMember = async (req, res) => {
     }
 
     // Upload files to Cloudinary (Parallel Execution for Speed)
+    const uploadFile = async (file) => {
+      const result = await cloudinary.uploader.upload(file.path, {
+        folder: "members",
+        resource_type: "auto",
+      });
+      return result.secure_url;
+    };
+
     const uploadPromises = [
-      uploadToCloudinary(req.files.profilePhoto[0], "members"),
+      uploadFile(req.files.profilePhoto[0]),
     ];
 
     if (req.files.governmentIdProof?.[0]) {
       uploadPromises.push(
-        uploadToCloudinary(req.files.governmentIdProof[0], "members"),
+        uploadFile(req.files.governmentIdProof[0]),
       );
     } else {
       uploadPromises.push(Promise.resolve(""));
     }
 
     const [profilePhoto, governmentIdProof] = await Promise.all(uploadPromises);
+    console.log("Uploaded Profile Photo URL:", profilePhoto);
+
+    if (!profilePhoto) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to upload profile photo",
+      });
+    }
 
     //  PREVENT DUPLICATE REGISTRATION
     const exists = await Member.findOne({ email: body.email });
@@ -1048,11 +1064,14 @@ export const updateMemberStatus = async (req, res) => {
 
     if (!id)
       return res.status(400).json({ success: false, message: "Missing id" });
-    let member = await Member.findById(id);
+
+    let member = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      member = await Member.findById(id);
+    }
     if (!member) {
       member = await Member.findOne({ memberId: id });
     }
-
 
     if (!member) {
       return res
@@ -1108,6 +1127,13 @@ export const updateMemberStatus = async (req, res) => {
       const existingUser = await User.findOne({ email: member.email });
 
       if (existingUser) {
+        // 🛡️ Security: Prevent overwriting Admin accounts
+        if (existingUser.role === "admin") {
+          return res.status(400).json({
+            success: false,
+            message: "Cannot approve member linked to an Admin email.",
+          });
+        }
         // If user exists, update password to allow login with new credentials
         existingUser.password = hash;
         existingUser.role = "member";
@@ -1221,18 +1247,20 @@ export const updateMemberDocuments = async (req, res) => {
 
     // 1. Profile Photo Upload Logic
     if (files && files.profilePhoto) {
-      updateData.profilePhoto = await uploadToCloudinary(
-        files.profilePhoto[0],
-        "members",
-      );
+      const result = await cloudinary.uploader.upload(files.profilePhoto[0].path, {
+        folder: "members",
+        resource_type: "auto",
+      });
+      updateData.profilePhoto = result.secure_url;
     }
 
     // 2. Government ID Proof Upload Logic
     if (files && files.governmentIdProof) {
-      updateData.governmentIdProof = await uploadToCloudinary(
-        files.governmentIdProof[0],
-        "members",
-      );
+      const result = await cloudinary.uploader.upload(files.governmentIdProof[0].path, {
+        folder: "members",
+        resource_type: "auto",
+      });
+      updateData.governmentIdProof = result.secure_url;
     }
 
     const updatedMember = await Member.findByIdAndUpdate(
@@ -1283,8 +1311,11 @@ export const updateMemberProfile = async (req, res) => {
     if (profession !== undefined) updateData.profession = profession;
 
     if (req.files && req.files.profilePhoto && req.files.profilePhoto[0]) {
-      const profilePhotoUrl = await uploadToCloudinary(req.files.profilePhoto[0], "members");
-      if (profilePhotoUrl) updateData.profilePhoto = profilePhotoUrl;
+      const result = await cloudinary.uploader.upload(req.files.profilePhoto[0].path, {
+        folder: "members",
+        resource_type: "auto",
+      });
+      updateData.profilePhoto = result.secure_url;
     }
 
     const updatedMember = await Member.findByIdAndUpdate(member._id, { $set: updateData }, { new: true });
