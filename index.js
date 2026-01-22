@@ -517,10 +517,22 @@ io.on("connection", (socket) => {
     console.log(`User ${userId} joined donor room`);
   });
 
+  // ✅ USER ROOM (For Members/Volunteers)
+  socket.on("join-user-room", (userId) => {
+    socket.join(`user-${userId}`);
+    console.log(`User ${userId} joined user room`);
+  });
+
   // ✅ ADMIN ROOM (NEW – YAHI ADD KARNA THA)
   socket.on("join-admin-room", () => {
     socket.join("admins");
     console.log("Admin joined admin room");
+  });
+
+  // ✅ VOLUNTEER ROOM
+  socket.on("join-volunteer-room", (userId) => {
+    socket.join(`volunteer-${userId}`);
+    console.log(`Volunteer ${userId} joined room: volunteer-${userId}`);
   });
 
   socket.on("disconnect", () => {

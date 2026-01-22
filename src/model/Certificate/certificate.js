@@ -6,7 +6,7 @@ const certificateSchema = new mongoose.Schema({
     issueDate: { type: String, required: true },
     description: { type: String },
     status: {type: String,enum: ["Pending", "Issued"],default: "Pending",},
-    role: { type: String, enum: ["donor", "volunteer"], required: true },
+    role: { type: String, enum: ["donor", "volunteer", "member"], required: true },
     qrCode: { type: String }
 }, { timestamps: true });
 
