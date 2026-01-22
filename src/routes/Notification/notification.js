@@ -4,8 +4,10 @@ import {
   markAllAsRead,
   getMemberNotifications,
   markNotificationAsRead,
+  getVolunteerNotifications,
+  markVolunteerNotificationsAsRead,
 } from "../../controller/Notification/notification.js";
-import { requireAuth, requireAdmin } from "../../middleware/auth.js";
+import { requireAuth, requireAdmin, requireVolunteer } from "../../middleware/auth.js";
 
 const router = express.Router();
 
@@ -21,5 +23,9 @@ router.put("/admin/read", requireAuth, requireAdmin, markAllAsRead);
 // ✅ MEMBER NOTIFICATIONS
 router.get("/member", requireAuth, getMemberNotifications);
 router.put("/:id/read", requireAuth, markNotificationAsRead);
+
+// ✅ VOLUNTEER ROUTES
+router.get("/volunteer", requireAuth, requireVolunteer, getVolunteerNotifications);
+router.put("/volunteer/read", requireAuth, requireVolunteer, markVolunteerNotificationsAsRead);
 
 export default router;

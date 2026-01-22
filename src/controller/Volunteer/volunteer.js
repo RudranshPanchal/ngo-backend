@@ -6,6 +6,11 @@ import { generateTempPassword } from "../../utils/generateTempPassword.js";
 
 import bcrypt from "bcrypt";
 import User from "../../model/Auth/auth.js";
+import Task from "../../model/Task/task.js";
+import Event from "../../model/Event/event.js";
+import EventApplication from "../../model/Event/eventApplication.js";
+import { calculateVolunteerLevel } from "../../utils/volunteerLevel.js";
+import Notification from "../../model/Notification/notification.js";
 
 // controller/Volunteer/volunteer.js
 
@@ -46,6 +51,31 @@ export const registerVolunteer = async (req, res) => {
     //     console.log("Mail error:", e.message); 
     // }
 
+
+    // Notification Logic
+    try {
+      // A. Save Notification to Database (So it shows up on refresh)
+      const newNotification = await Notification.create({
+        userType: "admin",
+        title: "New Volunteer Registration",
+        message: `New volunteer registered: ${volunteer.fullName}`,
+        type: "registration",
+        role: "volunteer",
+        read: false,
+      });
+
+      // B. Send Real-Time Socket Alert
+      const io = req.app.get("io"); // Get the socket instance
+      if (io) {
+        // Emit to the specific volunteer's room we set up in Step 1
+        io.to("admins").emit("admin-notification", newNotification);
+        console.log("Socket notification sent to admins");
+      }
+    } catch (notifError) {
+      console.error("Notification failed:", notifError);
+      // Don't fail the request just because notification failed
+    }
+
     res.status(201).json({ success: true, volunteer });
 
   } catch (error) {
@@ -79,6 +109,265 @@ export const getAllVolunteers = async (req, res) => {
     res.json({ success: true, volunteers: demoVolunteers });
   }
 };
+
+// --------------------Get Volunteer Dashboard Stats (Calculates & Updates DB)
+// export const getVolunteerStats = async (req, res) => {
+//   try {
+//     const userId = req.user._id;
+//     const volunteerRef = req.user.volunteerRef;
+
+
+//     // 1. Calculate Task Stats
+//     const totalTasks = await Task.countDocuments({ assignedTo: userId });
+//     const completedTasks = await Task.countDocuments({ assignedTo: userId, status: 'completed' });
+
+//     // Calculate Hours from completed tasks
+//     const completedTasksList = await Task.find({ assignedTo: userId, status: 'completed' }).select('estimatedHours event');
+//     const hoursContributed = completedTasksList.reduce((acc, curr) => acc + (Number(curr.estimatedHours) || 0), 0);
+
+//     // Get IDs of events where user completed a task
+//     const taskEventIds = completedTasksList
+//       .filter(t => t.event)
+//       .map(t => t.event);
+
+//     // 2. Calculate Event Stats
+//     // Check both Event participants (User ID) AND EventApplication (Volunteer ID)
+//     const completedEvents = await Event.find({
+//       participants: new mongoose.Types.ObjectId(userId),
+//       status: 'completed'
+//     }).select('_id');
+
+//     // Also check events where user completed a task (and event is completed)
+//     const taskBasedEvents = await Event.find({
+//       _id: { $in: taskEventIds },
+//       status: 'completed'
+//     }).select('_id');
+
+//     let attendedApplications = [];
+//     if (volunteerRef) {
+//       attendedApplications = await EventApplication.find({
+//         volunteerId: new mongoose.Types.ObjectId(volunteerRef),
+//         status: 'attended'
+//       }).select('eventId');
+//     }
+
+//     const uniqueEventIds = new Set([
+//       ...completedEvents.map(e => e._id.toString()),
+//       ...taskBasedEvents.map(e => e._id.toString()),
+//       ...attendedApplications.map(a => a.eventId.toString())
+//     ]);
+
+//     const eventsAttended = uniqueEventIds.size;
+
+//     // 3. Calculate Impact Score
+//     // Logic: 10 pts per task, 5 pts per hour, 20 pts per event
+//     const impactScore = (completedTasks * 10) + (hoursContributed * 5) + (eventsAttended * 20);
+
+//     // 4. Calculate level based on Impact Score
+//     const levelData = calculateVolunteerLevel(impactScore || 0);
+
+//     // 5. Update User Profile (So Leaderboard works correctly)
+//     await User.findByIdAndUpdate(userId, {
+//       impactScore,
+//       hoursVolunteered: hoursContributed,
+//       volunteerLevel: levelData.level,
+//       volunteerLevelName: levelData.name
+//     });
+
+//     res.json({
+//       success: true,
+//       stats: {
+//         totalTasks,
+//         completedTasks,
+//         hoursContributed,
+//         eventsAttended,
+//         impactScore,
+//         level: levelData.level,
+//         levelName: levelData.name,
+//         certificatesEarned: 0 // Placeholder for now
+//       }
+//     });
+//   } catch (error) {
+//     console.error("Stats error:", error);
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// };
+
+
+export const getVolunteerStats = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // 1. TASK STATS
+    const totalTasks = await Task.countDocuments({ assignedTo: userId });
+    const completedTasks = await Task.countDocuments({
+      assignedTo: userId,
+      status: 'completed'
+    });
+
+    const completedTasksList = await Task.find({
+      assignedTo: userId,
+      status: 'completed'
+    }).select('estimatedHours event');
+
+    const hoursContributed = completedTasksList.reduce(
+      (acc, curr) => acc + (Number(curr.estimatedHours) || 0),
+      0
+    );
+
+    // 2. EVENT IDS FROM TASKS
+    const taskEventIds = completedTasksList
+      .filter(t => t.event)
+      .map(t => t.event.toString());
+
+    // 3. EVENTS VIA TASKS (NO STATUS CHECK)
+    const taskBasedEvents = await Event.find({
+      _id: { $in: taskEventIds }
+    }).select('_id');
+
+    // 4. EVENTS VIA PARTICIPATION
+
+    const uniqueEventIds = new Set(
+      completedTasksList
+        .filter(t => t.event)
+        .map(t => t.event.toString())
+    );
+
+    const eventsAttended = uniqueEventIds.size;
+
+
+    // const participantEvents = await Event.find({
+    //   participants: userId
+    // }).select('_id');
+
+    // const uniqueEventIds = new Set([
+    //   ...taskBasedEvents.map(e => e._id.toString()),
+    //   ...participantEvents.map(e => e._id.toString())
+    // ]);
+
+    // const eventsAttended = uniqueEventIds.size;
+
+    // 5. IMPACT SCORE
+    const impactScore =
+      (completedTasks * 10) +
+      (hoursContributed * 5) +
+      (eventsAttended * 20);
+
+    // 6. LEVEL
+    const levelData = calculateVolunteerLevel(impactScore);
+
+    // 7. UPDATE USER
+    await User.findByIdAndUpdate(userId, {
+      impactScore,
+      hoursVolunteered: hoursContributed,
+      volunteerLevel: levelData.level,
+      volunteerLevelName: levelData.name
+    });
+
+    res.json({
+      success: true,
+      stats: {
+        totalTasks,
+        completedTasks,
+        hoursContributed,
+        eventsAttended,
+        impactScore,
+        level: levelData.level,
+        levelName: levelData.name,
+        certificatesEarned: 0
+      }
+    });
+  } catch (error) {
+    console.error("Stats error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+
+// 🛠️ DEBUG: Seed Data for Stats
+// export const seedVolunteerStatsData = async (req, res) => {
+//   try {
+//     const userId = req.user._id;
+//     const volunteerRef = req.user.volunteerRef;
+
+//     if (!volunteerRef) {
+//       return res.status(400).json({ message: "User is not linked to a volunteer profile" });
+//     }
+
+//     // 1. Create/Update a Completed Event where user is participant
+//     let event = await Event.findOne({ title: "Debug Completed Event" });
+//     if (!event) {
+//       event = await Event.create({
+//         title: "Debug Completed Event",
+//         description: "Auto-generated for debugging stats",
+//         category: "Community",
+//         status: "completed",
+//         eventDate: new Date(),
+//         maxParticipants: 100,
+//         createdBy: userId, 
+//         participants: [userId] // <--- Adds you here
+//       });
+//     } else {
+//       if (!event.participants.includes(userId)) {
+//         event.participants.push(userId);
+//         await event.save();
+//       }
+//     }
+
+//     // 2. Create/Update an Attended Application
+//     let appEvent = await Event.findOne({ title: "Debug Attended Event" });
+//     if (!appEvent) {
+//       appEvent = await Event.create({
+//         title: "Debug Attended Event",
+//         description: "Auto-generated for debugging application stats",
+//         category: "Workshop",
+//         status: "completed",
+//         eventDate: new Date(),
+//         maxParticipants: 100,
+//         createdBy: userId
+//       });
+//     }
+
+//     await EventApplication.findOneAndUpdate(
+//       { eventId: appEvent._id, volunteerId: volunteerRef },
+//       { status: "attended", appliedAt: new Date(), attendedAt: new Date() },
+//       { upsert: true, new: true }
+//     );
+
+//     res.json({ success: true, message: "Debug data seeded! Refresh your dashboard." });
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+// Get Volunteer Leaderboard
+export const getLeaderboard = async (req, res) => {
+  try {
+    // Fetch users with role 'volunteer'
+    // Select specific fields to reduce payload size
+    // Sort by impactScore in descending order (-1)
+    // Limit to top 50 or 100
+    const leaderboard = await User.find({ role: "volunteer" })
+      .select("fullName profilePic impactScore hoursVolunteered badges volunteerLevel volunteerLevelName")
+      .sort({ impactScore: -1 })
+      .limit(50);
+
+    res.status(200).json({
+      success: true,
+      data: leaderboard,
+    });
+  } catch (error) {
+    console.error("Error fetching leaderboard:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch leaderboard",
+      error: error.message,
+    });
+  }
+};
+
+
 
 export const getVolunteerById = async (req, res) => {
   try {
@@ -298,7 +587,7 @@ export const getVolunteerById = async (req, res) => {
 //     if (password) {
 //       hashedPassword = await bcrypt.hash(password, 10);
 //     }
-    
+
 //     // -----------------------------
 //     // CASE 1: USER ALREADY EXISTS
 //     // -----------------------------
@@ -339,7 +628,7 @@ export const getVolunteerById = async (req, res) => {
 //     // -----------------------------
 //     else {
 //       console.log("VOLUNTEER ID", volunteer._id);
-      
+
 //       const cleanName = (volunteer.fullName || "member")
 //         .toLowerCase()
 //         .replace(/\s+/g, "");
@@ -420,7 +709,7 @@ export const updateVolunteerStatus = async (req, res) => {
     // ---------------------------------
     const tempPassword = generateTempPassword(volunteer.fullName, volunteer.dob);
     console.log(tempPassword);
-    
+
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
     // Identity check ALWAYS by email
@@ -495,6 +784,12 @@ export const updateVolunteerStatus = async (req, res) => {
 
         profession: volunteer.profession,
         uploadIdProof: volunteer.uploadIdProof,
+
+        impactScore: 0,
+        hoursVolunteered: 0,
+        badges: [],
+        volunteerLevel: 1,
+        volunteerLevelName: "Rookie",
 
         emailVerified: volunteer.isEmailVerified === true,
         phoneVerified: volunteer.isPhoneVerified === true,

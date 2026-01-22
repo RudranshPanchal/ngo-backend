@@ -85,7 +85,31 @@ export const markNotificationAsRead = async (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error("Mark notification as read error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" 
+  };
+    
+    
+export const getVolunteerNotifications = async (req, res) => {
+  try {
+    const notifications = await Notification.find({
+      userType: "volunteer",
+      userId: req.user._id, // Only get notifications for this specific volunteer
+    }).sort({ createdAt: -1 });
+
+    res.json({ success: true, notifications });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const markVolunteerNotificationsAsRead = async (req, res) => {
+  try {
+    await Notification.updateMany(
+      { userType: "volunteer", userId: req.user._id, read: false },
+      { $set: { read: true } }
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

@@ -1,9 +1,21 @@
+import fs from "fs";
+import path from "path";
 import Donation from "../../model/Donation/donation.js";
 import User from "../../model/Auth/auth.js";
+// import { sendReceiptEmail } from "../../utils/mail.js"; 
 import Razorpay from "razorpay";
 import crypto from "crypto";
+// import { generatePDFBuffer } from "../../services/pdf.service.js";
 import dotenv from "dotenv";
 import DonationReg from "../../model/donor_reg/donor_reg.js";
+import { generatePDFBuffer } from "../../services/pdf.service.js";
+import { NGO_80G } from "../../config/ngo.config.js";
+import { numberToWords } from "../../utils/numberToWords.js";
+import Counter from "../../model/Counter/counter.js";
+import { uploadToCloudinary } from "../../utils/uploader.js";
+import Notification from "../../model/Notification/notification.js";
+
+
 dotenv.config();
 
 // Initialize Razorpay with fallback keys
@@ -16,107 +28,90 @@ if (keyId && keySecret) {
         key_id: keyId,
         key_secret: keySecret,
     });
-    console.log('✅ Razorpay initialized with keys');
+    console.log(' Razorpay initialized with keys');
 } else {
-    console.log('❌ Razorpay keys missing');
+    console.log(' Razorpay keys missing');
 }
 
-
-// export const registerDonor= async (req,res)=>{
-//     const {fullname,Contact}=req.body;
-//     const data = await DonationReg.create({
-//         name : fullname,
-//         Contact:Contact,
-
-//     })
-//       return res.json({
-//                 success: true,
-//                 message: ` donation recorded successfully`,    
-//             });
-// }
-// export const registerDonor = async (req, res) => {
-//   try {
-//     const { fullName, donationAmount, fundraisingId } = req.body;
-
-//     // 🔥 USER ID FROM TOKEN
-//      const userId = req.user?._id || null; 
-
-//     // if (!userId) {
-//     //   return res.status(401).json({
-//     //     success: false,
-//     //     message: "Unauthorized: user not logged in"
-//     //   });
-//     // }
-
-//     const donor = await DonationReg.create({
-//       userId, 
-//       name: fullName,
-//       organisationName: req.body.organisationName,
-//       contactNumber: req.body.contactNumber,
-//       email: req.body.email,
-//       address: req.body.address,
-//       panNumber: req.body.panNumber,
-//       gstNumber: req.body.gstNumber,
-//       donationAmount,
-//       fundraisingId: fundraisingId || null,
-//       uploadPaymentProof: req.file ? req.file.path : ""
-//     });
-
-//     return res.json({
-//       success: true,
-//       message: "Donation recorded successfully",
-//       data: donor
-//     });
-
-//   } catch (error) {
-//     console.error("registerDonor error:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: error.message
-//     });
-//   }
-// };
 export const registerDonor = async (req, res) => {
   try {
-    const safeFundId =
-      req.body.fundraisingId && req.body.fundraisingId !== ""
-        ? req.body.fundraisingId
-        : null;
+    // 1. req.body se saare zaroori fields nikaalein (Destructuring)
+    const { 
+      fullName, 
+      organisationName, 
+      contactNumber, 
+      address, 
+      email, 
+      panNumber, 
+      gstNumber, 
+      donationAmount, 
+      fundraisingId,
+      isPhoneVerified: rawPhoneVerified,
+      isEmailVerified: rawEmailVerified
+    } = req.body;
 
-    const isPhoneVerified =
-      String(req.body.isPhoneVerified).toLowerCase() === "true";
+    // 2. userId ko req.user se nikaalein (Middleware se aata hai)
+    const userId = req.user?._id || null;
 
-    const isEmailVerified =
-      String(req.body.isEmailVerified).toLowerCase() === "true";
+    const safeFundId = fundraisingId && fundraisingId !== "" ? fundraisingId : null;
 
-    console.log("📝 FINAL FLAGS =>", {
-      isPhoneVerified,
-      isEmailVerified,
-      body: req.body,
-    });
+    const isPhoneVerified = String(rawPhoneVerified).toLowerCase() === "true";
+    const isEmailVerified = String(rawEmailVerified).toLowerCase() === "true";
 
+    console.log("📝 FINAL FLAGS =>", { isPhoneVerified, isEmailVerified, userId });
+
+    // 3. Donation Registration record create karein
     const donorEntry = await DonationReg.create({
-      userId: req.user?._id || null,
-      name: req.body.fullName,
-      organisationName: req.body.organisationName,
-      contactNumber: req.body.contactNumber,
-      address: req.body.address,
-      email: req.body.email,
-      panNumber: req.body.panNumber,
-      gstNumber: req.body.gstNumber,
+      userId: userId,
+      name: fullName,
+      organisationName: organisationName,
+      contactNumber: contactNumber,
+      address: address,
+      email: email,
+      panNumber: panNumber,
+      gstNumber: gstNumber,
       isPhoneVerified: Boolean(isPhoneVerified),
       isEmailVerified: Boolean(isEmailVerified),
       status: "pending",
-      donationAmount: req.body.donationAmount,
+      donationAmount: donationAmount,
       fundraisingId: safeFundId,
       uploadPaymentProof: req.file ? req.file.path : "",
     });
+
+    // 4. User Profile update karein (Agar user logged in hai)
+    if (userId) {
+      await User.findByIdAndUpdate(userId, {
+        $set: { 
+          panNumber: panNumber, // User model mein PAN update
+          address: address,     // User model mein Address update
+          contactNumber: contactNumber // User model mein Phone update
+        }
+      });
+      console.log("✅ User profile updated with PAN, Address and Phone");
+    }
+
+    // 🔔 SAVE & SEND NOTIFICATION (Database + Real-time)
+    const newNotification = await Notification.create({
+        userType: "admin",
+        message: `New donor registration from ${fullName} for ₹${donationAmount}.`,
+        type: "donor-registration",
+        role: "donor",
+        read: false
+    });
+
+    const io = req.app.get("io");
+    if (io) {
+        io.to("admins").emit("admin-notification", newNotification);
+        console.log('🔔 Admin notification sent for new donor registration.');
+    }
 
     return res.json({
       success: true,
       data: donorEntry,
     });
+
   } catch (error) {
+    console.error("❌ Register Donor Error:", error.message);
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -124,89 +119,61 @@ export const registerDonor = async (req, res) => {
   }
 };
 
-
 export const createDonationOrder = async (req, res) => {
   try {
-    console.log("🔥 Incoming Donation Body:", req.body);
-    console.log("🔥 Received fundraisingId:", req.body.fundraisingId);
+    console.log(" Incoming Donation Body:", req.body);
 
     const {
-  amount,
-  modeofDonation,
-  donorName,
-  donorEmail,
-  donorPhone,
-  fundraisingId,
-  fromRegistration // 👈 NEW FLAG
-} = req.body;
+      amount,
+      modeofDonation,
+      donorName,
+      donorEmail,
+      donorPhone,
+      panNumber,
+      address,
+      fundraisingId,
+      fromRegistration
+    } = req.body;
 
-const userId = req.user?._id || null;
-
-
-    console.log("🔍 Extracted:", { amount, modeofDonation, donorName, donorEmail, donorPhone, fundraisingId });
+    const userId = req.user?._id || null;
 
     if (!razorpay) return res.status(500).json({ message: "Payment gateway missing" });
-
-    if (!amount || !modeofDonation)
-      return res.status(400).json({ message: "Amount & payment mode required" });
-
+    if (!amount || !modeofDonation) return res.status(400).json({ message: "Amount & payment mode required" });
     if (amount < 1) return res.status(400).json({ message: "Amount must be ≥ 1" });
 
-    if (!["bankTransfer", "upi", "cash", "cheque"].includes(modeofDonation))
-      return res.status(400).json({ message: "Invalid mode" });
-
-    // CASH / CHEQUE DONATION
-    if (["cash", "cheque"].includes(modeofDonation)) {
-      console.log("⚡ CASH / CHEQUE donation triggered");
-      console.log("⚡ fundraisingId inside block:", fundraisingId);
-
-      const donation = await Donation.create({
-        userId,
-        amount,
-        modeofDonation,
-        paymentStatus: "pending",
-        donorName: donorName || "Anonymous",
-        donorEmail: donorEmail || "noemail@example.com",
-        donorPhone: donorPhone || "0000000000",
-        fundraisingId,
-      });
-
-      // UPDATE FUND
-      if (fundraisingId) {
-        const Fund = await import("../../model/fundraising/fundraising.js").then(m => m.default);
-        const fundItem = await Fund.findById(fundraisingId);
-
-        console.log("📌 Before update:", fundItem?.payment);
-
-        if (fundItem) {
-          fundItem.payment = Number(fundItem.payment) + Number(amount);
-          await fundItem.save();
-          console.log("⭐ After update:", fundItem.payment);
-        } else {
-          console.log("❌ Fundraising not found:", fundraisingId);
-        }
-      } else {
-        console.log("❌ NO fundraisingId received");
-      }
-
-      return res.json({
-        success: true,
-        message: `${modeofDonation} donation recorded`,
-        donation,
+    // ================================
+    // ✅ ONLY ONLINE PAYMENT ALLOWED
+    // ================================
+    const allowedModes = ["upi", "card", "netbanking"];
+    if (!allowedModes.includes(modeofDonation)) {
+      return res.status(400).json({
+        message: "Only online payments are allowed"
       });
     }
+
+    // =================================================
+    // 🔥 SAFE RECEIPT NUMBER USING COUNTER (NO DUPLICATE)
+    // =================================================
+    const counter = await Counter.findOneAndUpdate(
+      { name: "donationReceipt" },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+
+    const customReceiptId = `pay_orbosis${String(counter.seq).padStart(6, "0")}`;
+    // =================================================
 
     // ONLINE DONATION (RAZORPAY)
     const options = {
       amount: Math.round(amount * 100),
       currency: "INR",
-      receipt: "donation_" + Date.now(),
+      receipt: customReceiptId,
       notes: { fromRegistration, userId, modeofDonation, donorName, donorEmail, fundraisingId },
     };
 
     const order = await razorpay.orders.create(options);
 
-    await Donation.create({
+    const newDonation = await Donation.create({
       userId,
       amount,
       modeofDonation,
@@ -215,10 +182,14 @@ const userId = req.user?._id || null;
       donorName,
       donorEmail,
       donorPhone,
+      panNumber,
+      address,
       fundraisingId,
+      receiptNo: customReceiptId,
+      is80GEligible: true   // 👈 online payment = always eligible
     });
 
-    console.log("⚡ Razorpay order created. fundraisingId:", fundraisingId);
+    console.log(`🚀 Order Created: ${customReceiptId}`);
 
     return res.json({
       success: true,
@@ -226,113 +197,148 @@ const userId = req.user?._id || null;
       amount: order.amount,
       currency: order.currency,
       key_id: keyId,
+      receipt: customReceiptId,
       details: { amount, donorName, donorEmail, fundraisingId },
     });
 
   } catch (err) {
-    console.error("❌ Error in donation:", err);
+    console.error(" Error in donation:", err);
     return res.status(500).json({ error: err.message });
   }
 };
 
 
 
-// Verify Razorpay payment
 export const verifyDonationPayment = async (req, res) => {
     try {
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature, fromRegistration } = req.body;
-
-        // FIX: Wahi secret use karein jo initialize karte waqt define kiya tha
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
         const secret = process.env.RAZORPAY_KEY_SECRET || '3hv6ZUhPh9gIPTA4uX6jEDM8';
 
-        // Verify the payment signature
+        // 1. Signature Verification
         const sign = razorpay_order_id + "|" + razorpay_payment_id;
         const expectedSignature = crypto
-            .createHmac("sha256", secret) // Yahan 'secret' variable use karein
+            .createHmac("sha256", secret)
             .update(sign.toString())
             .digest("hex");
 
         if (expectedSignature !== razorpay_signature) {
-            console.log("❌ Signature Mismatch!");
-            console.log("Expected:", expectedSignature);
-            console.log("Received:", razorpay_signature);
             return res.status(400).json({ message: "Payment verification failed" });
         }
-        
-        // ... baki ka code same rahega
-        // Find the donation record by order ID
+
+        // 2. Donation Record dhundo
         const donation = await Donation.findOne({ razorpayOrderId: razorpay_order_id });
         if (!donation) {
             return res.status(404).json({ message: "Donation record not found" });
         }
 
-        // Update donation with payment details
+        // 3. User (Donor) ki registration details fetch karo PAN ke liye
+        const donorReg = await User.findById(donation.userId);
+
+        // 4. PAN Number decide karo (Pehle check karo agar payment form se aaya hai, warna DB se)
+        const finalPan = req.body.panNumber || donation.panNumber || (donorReg ? donorReg.panNumber : "N/A");
+
+        // 5. Update Donation Status in DB
         donation.razorpayPaymentId = razorpay_payment_id;
         donation.razorpaySignature = razorpay_signature;
         donation.paymentStatus = "completed";
-        await donation.save();
+        donation.panNumber = finalPan;
 
-        // 🔥 IF PAYMENT CAME FROM REGISTRATION PAGE
-if (fromRegistration === true) {
-  const existing = await DonationReg.findOne({
-    email: donation.donorEmail,
-    status: "pending"
-  });
+        // 6. PDF Receipt Generation aur Email Logic
+        try {
 
-  if (!existing) {
-    await DonationReg.create({
-      name: donation.donorName,
-      email: donation.donorEmail,
-      contactNumber: donation.donorPhone,
-      donationAmount: donation.amount,
-      fundraisingId: donation.fundraisingId || null,
-      status: "pending"
-    });
-  }
-}
+const receiptData = {
+  // NGO DETAILS
+  ngoName: NGO_80G.name,
+  ngoAddress: NGO_80G.address,
+  ngoPan: NGO_80G.pan,
+  section80GNumber: NGO_80G.registration80G,
+  validity: NGO_80G.validity,
 
- // ⭐ STEP-3: UPDATE FUNDRAISING PROGRESS
-        if (donation.fundraisingId) {
-            const Fund = await import('../../model/fundraising/fundraising.js').then(m => m.default);
-            const fundItem = await Fund.findById(donation.fundraisingId);
+  // DONOR DETAILS
+  donorName: donation.donorName,
+  donorEmail: donation.donorEmail,
+  donorPan: finalPan,
 
-            if (fundItem) {
-                fundItem.payment = Number(fundItem.payment) + Number(donation.amount);
-                await fundItem.save();
-                console.log("Fundraising Updated After Razorpay Payment");
-            }
-        }
+  // DONATION DETAILS
+  amount: donation.amount,
+  amountInWords: numberToWords(donation.amount),
+  modeOfPayment: donation.modeofDonation,
+  transactionId: razorpay_payment_id,
+  receiptNo: donation.receiptNo,
+  date: new Date().toLocaleDateString("en-IN"),
 
+  // DECLARATION
+  declaration:
+    "This donation is eligible for deduction under Section 80G of the Income Tax Act, 1961.",
 
-        // Emit real-time update to donor
-        const io = req.app?.get('io');
-        if (io) {
-            emitDonorUpdate(io, donation.userId, 'donation-completed', {
-                donationId: donation._id,
-                amount: donation.amount,
-                status: 'completed'
-            });
-        }
-
-        res.json({ 
-            success: true, 
-            message: "Payment verified and donation completed",
-            donation: {
-                _id: donation._id,
-                amount: donation.amount,
-                paymentStatus: donation.paymentStatus,
-                razorpayPaymentId: donation.razorpayPaymentId
-            }
-        });
-
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+  signature: NGO_80G.signatureImage
 };
 
 
+            // Buffer generate karo
+            const pdfBuffer = await generatePDFBuffer(receiptData, "donation");
 
+            // Local folder mein save karo
+            const fileName = `receipt-${donation._id}.pdf`;
+            const directoryPath = path.join(process.cwd(), "uploads", "receipts");
 
+            if (!fs.existsSync(directoryPath)) {
+                fs.mkdirSync(directoryPath, { recursive: true });
+            }
+
+            const filePath = path.join(directoryPath, fileName);
+            fs.writeFileSync(filePath, pdfBuffer);
+
+            // DB mein URL update karo
+            donation.receiptUrl = `/uploads/receipts/${fileName}`;
+            await donation.save(); // Sab save kar diya
+
+            console.log("✅ Receipt Saved and DB Updated:", donation.receiptUrl);
+
+            // Email bhej do
+            // await sendReceiptEmail({
+            //     email: donation.donorEmail,
+            //     name: donation.donorName,
+            //     amount: donation.amount,
+            //     pdfBuffer: pdfBuffer,
+            //     transactionId: razorpay_payment_id
+            // });
+
+        } catch (pdfErr) {
+            console.error("❌ PDF/Email Automation Error:", pdfErr.message);
+            // Agar PDF fail ho jaye tab bhi donation status save hona chahiye
+            await donation.save();
+        }
+
+        // 🔔 SAVE & SEND NOTIFICATION (Database + Real-time)
+        if (donation.paymentStatus === "completed") {
+            const newNotification = await Notification.create({
+                userType: "admin",
+                message: `New donation of ₹${donation.amount} received from ${donation.donorName}.`,
+                type: "donation",
+                role: "donor",
+                read: false
+            });
+
+            const io = req.app.get("io");
+            if (io) {
+                io.to("admins").emit("admin-notification", newNotification);
+                console.log('🔔 Admin notification sent for new donation.');
+            }
+        }
+
+        // 7. Success Response
+        res.json({ 
+            success: true, 
+            message: "Payment verified and receipt processed",
+            donation 
+        });
+
+    } catch (error) {
+        console.error("Verification Route Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
 // Get user donations with total amount
 export const getUserDonations = async (req, res) => {
   try {
@@ -436,5 +442,134 @@ export const getAllDonationsForAdmin = async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+};
+
+// ===============================
+// ADMIN : GET ACTIVE DONORS (FROM USER COLLECTION)
+// ===============================
+export const getActiveDonorsFromUserCollection = async (req, res) => {
+  try {
+    const donors = await User.find({ role: "donor" }).sort({ createdAt: -1 });
+
+    // Map to match the structure expected by the frontend table
+    const formattedDonors = donors.map(user => ({
+      _id: user._id,
+      donorName: user.fullName,
+      donorEmail: user.email,
+      amount: 0, // Placeholder for user list
+      modeofDonation: "Registered",
+      paymentStatus: "Active",
+      receiptUrl: null,
+      createdAt: user.createdAt
+    }));
+
+    res.json({ success: true, data: formattedDonors });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ===============================
+// ADMIN : GET SINGLE DONOR DETAILS (BY USER ID OR DONATION ID)
+// ===============================
+export const getDonorById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // 1. Try finding in User collection (Active Donor)
+    let donor = await User.findById(id).lean();
+    let totalDonationAmount = 0;
+
+    if (donor) {
+      const donations = await Donation.find({ userId: donor._id, paymentStatus: 'completed' });
+      totalDonationAmount = donations.reduce((sum, d) => sum + (d.amount || 0), 0);
+    } else {
+      // 2. If not found, try finding in Donation collection (Transaction)
+      const donation = await Donation.findById(id);
+      if (donation) {
+        if (donation.userId) {
+          donor = await User.findById(donation.userId).lean();
+          if (donor) {
+            const donations = await Donation.find({ userId: donor._id, paymentStatus: 'completed' });
+            totalDonationAmount = donations.reduce((sum, d) => sum + (d.amount || 0), 0);
+          }
+        } 
+        
+        if (!donor) {
+          // Fallback for guest donations (construct a temporary donor object)
+          const donations = await Donation.find({ donorEmail: donation.donorEmail, paymentStatus: 'completed' });
+          totalDonationAmount = donations.reduce((sum, d) => sum + (d.amount || 0), 0);
+
+          donor = {
+            _id: null,
+            fullName: donation.donorName,
+            email: donation.donorEmail,
+            contactNumber: donation.donorPhone,
+            address: donation.address,
+            panNumber: donation.panNumber,
+            role: "Guest Donor"
+          };
+        }
+      }
+    }
+
+    if (!donor) {
+      return res.status(404).json({ success: false, message: "Donor details not found" });
+    }
+
+    donor.totalDonationAmount = totalDonationAmount;
+
+    res.json({ success: true, data: donor });
+  } catch (error) {
+    console.error("Get Donor Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/* ================= UPDATE SIGNUP USER PROFILE ================= */
+export const updateDonorProfile = async (req, res) => {
+  try {
+    const { panNumber, gstNumber, address, contactNumber, organisationName } = req.body;
+    const userId = req.user._id;
+
+    console.log("🛠️ Signup User Update Start for ID:", userId);
+
+    const updateData = {};
+    if (panNumber) updateData.panNumber = panNumber;
+    if (gstNumber) updateData.gstNumber = gstNumber;
+    if (address) updateData.address = address;
+    if (contactNumber) updateData.contactNumber = contactNumber;
+    if (organisationName) updateData.organisationName = organisationName;
+
+    // 1. Pehle MAIN USER (Auth) collection update karein (Ye signup data update karega)
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      console.log("❌ User not found in Auth collection");
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // 2. Phir DonationReg update karein (Agar user ne kabhi registration form bhara ho toh)
+    await DonationReg.findOneAndUpdate(
+      { userId: userId },
+      { $set: updateData },
+      { new: true }
+    );
+
+    console.log("✅ User Collection and DonationReg Synced Successfully");
+
+    res.json({ 
+      success: true, 
+      message: "Profile updated successfully",
+      data: updatedUser 
+    });
+  } catch (err) {
+    console.error("❌ Update Error:", err.message);
+    res.status(500).json({ success: false, message: err.message });
   }
 };

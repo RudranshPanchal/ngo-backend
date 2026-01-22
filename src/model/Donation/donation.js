@@ -37,7 +37,7 @@ const donationSchema = new mongoose.Schema({
         type: String,
         required: false
     },
-    
+    panNumber: { type: String, default: "N/A" },
     // Payment status
     paymentStatus: {
         type: String,
@@ -50,11 +50,17 @@ const donationSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    receiptNo: { 
+        type: String, 
+        unique: true // Isse har ID unique rahegi
+    },
+    receiptUrl: { type: String, default: "" },
     
     donorEmail: {
         type: String,
         required: true
     },
+    receiptUrl: { type: String, default: "" },
     
     donorPhone: {
         type: String,

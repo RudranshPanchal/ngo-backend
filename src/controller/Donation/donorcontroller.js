@@ -2,7 +2,8 @@ import DonationReg from "../../model/donor_reg/donor_reg.js";
 import Donation from "../../model/Donation/donation.js";
 import User from "../../model/Auth/auth.js";
 import bcrypt from "bcrypt";
-import { sendDonorWelcomeEmail } from "../../utils/mail.js";
+import Notification from "../../model/Notification/notification.js";
+// import { sendDonorWelcomeEmail } from "../../utils/mail.js";
 const generateDonorPassword = (name, mobile) => {
   if (!name || !mobile) return null;
 
@@ -60,6 +61,21 @@ export const registerDonor = async (req, res) => {
           Number(req.body.donationAmount || 0);
         await fundItem.save();
       }
+    }
+
+    // 🔔 SAVE & SEND NOTIFICATION (Database + Real-time)
+    const newNotification = await Notification.create({
+        userType: "admin",
+        message: `New donor registration from ${req.body.fullName} for ₹${req.body.donationAmount}.`,
+        type: "donor-registration",
+        role: "donor",
+        read: false
+    });
+
+    const io = req.app.get("io");
+    if (io) {
+        io.to("admins").emit("admin-notification", newNotification);
+        console.log('🔔 Admin notification sent for new donor registration.');
     }
 
     return res.json({
@@ -222,18 +238,22 @@ console.log(password);
         user.tempPassword = true;
         await user.save();
       }
-
+await Donation.findOneAndUpdate(
+  { donorEmail: donor.email, userId: null }, 
+ { $set: { userId: user._id } },// User ID ko null se badal kar actual ID set karein
+  { sort: { createdAt: -1 } } // Sabse latest donation update karein
+);
       // 2. Create Donation Record (Important)
-      await Donation.create({
-        userId: user._id,
-        amount: donor.donationAmount,
-        modeofDonation: donor.modeofDonation || "bankTransfer",
-        paymentStatus: "completed",
-        donorName: donor.name,
-        donorEmail: donor.email,
-        donorPhone: donor.contactNumber,
-        fundraisingId: donor.fundraisingId,
-      });
+      // await Donation.create({
+      //   userId: user._id,
+      //   amount: donor.donationAmount,
+      //   modeofDonation: donor.modeofDonation || "bankTransfer",
+      //   paymentStatus: "completed",
+      //   donorName: donor.name,
+      //   donorEmail: donor.email,
+      //   donorPhone: donor.contactNumber,
+      //   fundraisingId: donor.fundraisingId,
+      // });
 
       // 3. Update Donor Request (SAVE LAST to prevent partial updates)
       donor.userId = user._id;
@@ -245,12 +265,12 @@ console.log(password);
 
       // 4. Send Email
       try {
-        await sendDonorWelcomeEmail({
-          toEmail: user.email,
-          fullName: user.fullName,
-          email: user.email,
-          password: finalPassword
-          });
+      //   await sendDonorWelcomeEmail({
+      //     toEmail: user.email,
+      //     fullName: user.fullName,
+      //     email: user.email,
+      //     password: finalPassword
+      //     });
       } catch (mailError) {
         console.error("Mail sending failed:", mailError);
       }
@@ -351,18 +371,25 @@ export const getDonorProfile = async (req, res) => {
 /* ================= UPDATE DONOR PROFILE ================= */
 export const updateDonorProfile = async (req, res) => {
   try {
+    const userId = req.user._id;
     const update = {};
     if (req.body.panNumber) update.panNumber = req.body.panNumber;
     if (req.body.gstNumber) update.gstNumber = req.body.gstNumber;
     if (req.body.address) update.address = req.body.address;
+    if (req.body.contactNumber) update.contactNumber = req.body.contactNumber;
+    if (req.body.organisationName) update.organisationName = req.body.organisationName;
 
+    // ✅ 1. Update User Collection (Critical for Receipt & Login)
+    await User.findByIdAndUpdate(userId, { $set: update });
+
+    // ✅ 2. Update DonationReg (if exists)
     const donor = await DonationReg.findOneAndUpdate(
-      { userId: req.user._id },
+      { userId: userId },
       { $set: update },
       { new: true }
     );
 
-    res.json({ success: true, data: donor });
+    res.json({ success: true, data: donor || update });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

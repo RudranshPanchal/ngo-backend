@@ -260,6 +260,8 @@ import auditPdfRoutes from "./src/routes/AuditReport/pdf.routes.js";
 import eventRouter from "./src/routes/Event/event.js";
 import { log } from "console";
 import notificationRouter from "./src/routes/Notification/notification.js";
+import taskRouter from "./src/routes/Task/task.js";
+import fundraiserRoutes from "./src/routes/Fundraiser/fundraiser.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -291,7 +293,7 @@ app.use(
       }
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -305,6 +307,7 @@ const io = new Server(server, {
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use("/api/fundraiser", fundraiserRoutes);
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -439,6 +442,7 @@ app.get("/data", async (req, res) => {
 // Events
 app.use("/api/event", eventRouter);
 app.use("/api/notification", notificationRouter);
+app.use("/api/task", taskRouter);
 
 // Audit Report
 app.use("/api/report", auditReportRoutes);
@@ -523,6 +527,12 @@ io.on("connection", (socket) => {
   socket.on("join-admin-room", () => {
     socket.join("admins");
     console.log("Admin joined admin room");
+  });
+
+  // ✅ VOLUNTEER ROOM
+  socket.on("join-volunteer-room", (userId) => {
+    socket.join(`volunteer-${userId}`);
+    console.log(`Volunteer ${userId} joined room: volunteer-${userId}`);
   });
 
   socket.on("disconnect", () => {

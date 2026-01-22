@@ -370,3 +370,42 @@ export const sendSignupOtpEmail = async ({ toEmail, fullName, otp }) => {
     return { success: true, warning: "Email not sent but process continued" };
   }
 };
+// ✅ ADD THIS FUNCTION AT THE END OF emailHelper.js
+export async function sendReceiptEmail({
+  email,
+  name,
+  amount,
+  pdfBuffer,
+  transactionId
+}) {
+  const from = process.env.MAIL_FROM || process.env.SMTP_USER;
+  const to = email && email.trim() !== "" ? email : process.env.SMTP_USER;
+
+  const subject = "Donation Receipt - Orbosis Foundation";
+  
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+      <h2 style="color: #4A3AFF;">Thank You for Your Support, ${name}!</h2>
+      <p>We have received your generous donation of <strong>INR ${amount}</strong>.</p>
+      <p>Your contribution helps us continue our mission at Orbosis Foundation.</p>
+      <p>Please find your official 80G tax-exempt receipt attached to this email.</p>
+      <br>
+      <p><strong>Transaction ID:</strong> ${transactionId}</p>
+      <p>Best regards,<br><strong>Orbosis Foundation Team</strong></p>
+    </div>
+  `;
+
+  return transporter.sendMail({
+    from,
+    to,
+    subject,
+    html,
+    attachments: [
+      {
+        filename: `Donation_Receipt_${transactionId}.pdf`,
+        content: pdfBuffer,
+        contentType: "application/pdf",
+      },
+    ],
+  });
+}
