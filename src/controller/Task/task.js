@@ -1,6 +1,7 @@
 import Task from "../../model/Task/task.js";
 import Event from "../../model/Event/event.js";
 import User from "../../model/Auth/auth.js";
+import Notification from "../../model/Notification/notification.js";
 
 export const createTask = async (req, res) => {
     try {
@@ -33,6 +34,31 @@ export const createTask = async (req, res) => {
             estimatedHours,
             createdBy: req.user._id
         });
+
+        try {
+            // A. Save Notification to Database (So it shows up on refresh)
+            const newNotification = await Notification.create({
+                userType: "volunteer",
+                userId: task.assignedTo, // Ensure this matches the volunteer's ID in your task model
+                title: "New Task Assigned",
+                message: `You have been assigned a new task: ${task.title}`,
+                type: "task_assigned",
+                role: "volunteer",
+                read: false,
+            });
+
+            // B. Send Real-Time Socket Alert
+            const io = req.app.get("io"); // Get the socket instance
+            if (io) {
+                // Emit to the specific volunteer's room we set up in Step 1
+                io.to(`volunteer-${task.assignedTo}`).emit("volunteer-notification", newNotification);
+                console.log("Socket notification sent to volunteer");
+            }
+        } catch (notifError) {
+            console.error("Notification failed:", notifError);
+            // Don't fail the request just because notification failed
+        }
+        // ---------------- END NOTIFICATION LOGIC ----------------
 
         res.status(201).json({
             success: true,
@@ -85,7 +111,12 @@ export const updateTaskStatus = async (req, res) => {
         const { taskId } = req.params;
         const { status } = req.body;
 
-        const task = await Task.findById(taskId);
+        const currentUser = await User.findById(req.user._id);
+        if (!currentUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const task = await Task.findById(taskId).populate("event", "title");
         if (!task) {
             return res.status(404).json({ message: "Task not found" });
         }
@@ -97,6 +128,32 @@ export const updateTaskStatus = async (req, res) => {
 
         task.status = status;
         await task.save();
+
+        try {
+            const eventName = task.event?.title || "General Task";
+
+            // A. Save Notification to Database (So it shows up on refresh)
+            const newNotification = await Notification.create({
+                userType: "admin",
+                title: `Task Update: ${eventName}`,
+                message: `${currentUser.fullName} marked task "${task.title}" as ${status}`,
+                type: "task_status_update",
+                role: "volunteer",
+                read: false,
+            });
+
+            // B. Send Real-Time Socket Alert
+            const io = req.app.get("io"); // Get the socket instance
+            if (io) {
+                // Emit to the specific volunteer's room we set up in Step 1
+                io.to("admins").emit("admin-notification", newNotification);
+                console.log("Socket notification sent to admins");
+            }
+        } catch (notifError) {
+            console.error("Notification failed:", notifError);
+            // Don't fail the request just because notification failed
+        }
+        // ---------------- END NOTIFICATION LOGIC ----------------
 
         res.status(200).json({
             success: true,

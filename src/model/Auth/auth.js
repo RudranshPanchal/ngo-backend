@@ -163,6 +163,28 @@ const userSchema = new mongoose.Schema({
         default: false,
     },
 
+    // Leaderboard fields
+    impactScore: {
+        type: Number,
+        default: 0
+    },
+    hoursVolunteered: {
+        type: Number,
+        default: 0
+    },
+    badges: [{
+        type: String
+    }],
+    volunteerLevel: {
+        type: Number,
+        default: 1
+    },
+    volunteerLevelName: {
+        type: String,
+        default: "Beginner"
+    },
+
+
 
     //-------for donor-------//
 

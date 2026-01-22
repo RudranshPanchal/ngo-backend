@@ -1,4 +1,6 @@
 import Event from "../../model/Event/event.js";
+import Notification from "../../model/Notification/notification.js";
+import User from "../../model/Auth/auth.js";
 
 export const createEvent = async (req, res) => {
     try {
@@ -40,6 +42,40 @@ export const createEvent = async (req, res) => {
             maxParticipants,
             createdBy: req.user._id
         });
+
+        try {
+            // 1. Find all volunteers
+            const volunteers = await User.find({ role: "volunteer" }).select("_id");
+
+            if (volunteers.length > 0) {
+                // 2. Prepare notifications for each volunteer
+                const notifications = volunteers.map((vol) => ({
+                    userType: "volunteer",
+                    userId: vol._id,
+                    title: "New Event Announced",
+                    message: `New event "${event.title}" is scheduled on ${new Date(event.eventDate).toLocaleDateString()}.`,
+                    type: "event_created",
+                    role: "volunteer",
+                    read: false,
+                }));
+
+                // 3. Bulk Insert
+                const createdNotifications = await Notification.insertMany(notifications);
+
+                // 4. Send Real-Time Socket Alerts
+                const io = req.app.get("io");
+                if (io) {
+                    createdNotifications.forEach((notif) => {
+                        io.to(`volunteer-${notif.userId}`).emit("volunteer-notification", notif);
+                    });
+                    console.log(`Notification sent to ${volunteers.length} volunteers`);
+                }
+            }
+        } catch (notifError) {
+            console.error("Notification failed:", notifError);
+            // Don't fail the request just because notification failed
+        }
+        // ---------------- END NOTIFICATION LOGIC ----------------
 
         res.status(201).json({
             message: "Event created successfully",

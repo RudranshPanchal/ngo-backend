@@ -521,6 +521,12 @@ io.on("connection", (socket) => {
     console.log("Admin joined admin room");
   });
 
+  // ✅ VOLUNTEER ROOM
+  socket.on("join-volunteer-room", (userId) => {
+    socket.join(`volunteer-${userId}`);
+    console.log(`Volunteer ${userId} joined room: volunteer-${userId}`);
+  });
+
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
   });
