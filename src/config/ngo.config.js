@@ -6,5 +6,5 @@ export const NGO_80G = {
   validity: "01-04-2023 to 31-03-2028",
     // email: "orbosisfoundation@gmail.com",
 //   website: "www.orbosisfoundation.org",
-  signatureImage: "https://res.cloudinary.com/dq5ot5lup/image/upload/v1768758854/fundraising/mpjt1w8hrefcmkv6eoz2.jpg"
+  signatureImage: "https://res.cloudinary.com/dq5ot5lup/image/upload/v1769001375/fundraising/tu9xcuwhydj0exlsenok.png"
 };
