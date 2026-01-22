@@ -1,4 +1,4 @@
-import Fundraiser from "../../model/Fundraiser/Fundraiser.js";
+import Fundraiser from "../../model/Fundraiser/fundraiser.js";
 import bcrypt from "bcryptjs";
 
 export const applyForFundraiser = async (req, res) => {
