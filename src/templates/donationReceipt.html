@@ -92,7 +92,7 @@
     </div>
 </body>
 </html> -->
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html>
 <head>
     <style>
@@ -231,6 +231,131 @@
         </p>
         <p style="margin: 0;">This is a computer-generated receipt. No physical signature required.</p>
         <p style="margin-top: 3px; color: #1a5f7a; font-weight: bold; font-size: 11px;">Thank you for your generous support!</p>
+    </div>
+</div>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        @page { size: A4; margin: 10mm; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            padding: 0; margin: 0; color: #333; line-height: 1.2; 
+        }
+        
+        .receipt-box { 
+            width: 100%; 
+            max-width: 800px;
+            margin: 0 auto; 
+            border: 2px solid #1a5f7a; 
+            padding: 20px 30px; 
+            position: relative; 
+            box-sizing: border-box;
+        }
+
+        .watermark { 
+            position: absolute; top: 45%; left: 50%; 
+            transform: translate(-50%, -50%) rotate(-45deg); 
+            font-size: 55px; 
+            color: rgba(26, 95, 122, 0.04); 
+            font-weight: bold; z-index: -1; white-space: nowrap; 
+        }
+
+        .header { 
+            display: flex; justify-content: space-between; 
+            border-bottom: 2px solid #1a5f7a; 
+            padding-bottom: 12px; margin-bottom: 12px; 
+        }
+        
+        .ngo-name { font-size: 24px; font-weight: 900; color: #1a5f7a; margin: 0; }
+        /* Address styling fixed */
+        .ngo-address { font-size: 12px; color: #444; margin: 5px 0; font-weight: 600; }
+        .tax-info { font-size: 11px; color: #444; margin-top: 6px; line-height: 1.4; }
+
+        .receipt-title { 
+            text-align: center; font-size: 17px; font-weight: bold; 
+            margin: 12px 0; color: #fff; background: #1a5f7a; 
+            padding: 7px; border-radius: 4px; 
+        }
+
+        .details-table { width: 100%; margin-top: 5px; border-collapse: collapse; }
+        .details-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+        .label { font-weight: bold; color: #555; width: 30%; }
+        .value { color: #000; font-weight: 600; }
+
+        .amount-box { 
+            margin-top: 15px; background: #f0f7f9; 
+            padding: 15px; border-left: 4px solid #1a5f7a; 
+        }
+        .amount-text { font-size: 19px; font-weight: bold; color: #1a5f7a; margin: 3px 0; }
+        .amount-words { font-size: 12px; font-style: italic; color: #444; }
+
+        .signature-section { 
+            margin-top: 25px; 
+            display: flex; justify-content: flex-end; text-align: center; 
+        }
+        .signature-box { width: 160px; }
+        .signature-img { display: block; margin: 0 auto; max-height: 55px; mix-blend-mode: multiply; }
+        .sig-line { border-top: 1px solid #333; margin-top: 5px; padding-top: 3px; font-size: 12px; font-weight: bold; }
+
+        .footer { 
+            margin-top: 25px; text-align: center; 
+            font-size: 9px; color: #777; line-height: 1.4; 
+            border-top: 1px solid #eee; padding-top: 12px; 
+        }
+    </style>
+</head>
+<body>
+<div class="receipt-box">
+    <div class="watermark">{{ngoName}}</div>
+
+    <div class="header">
+        <div style="width: 65%;">
+            <h1 class="ngo-name">{{ngoName}}</h1>
+            <p class="ngo-address">{{ngoAddress}}</p>
+            <div class="tax-info">
+                <strong>PAN of Trust:</strong> {{ngoPan}} <br>
+                <strong>80G Approval No:</strong> AAATO1234F/80G/2023 <br>
+                <strong>Validity:</strong> {{validity}}
+            </div>
+        </div>
+        <div style="width: 35%; text-align: right; font-size: 11px; color: #555;">
+            <p style="margin: 2px 0;"><strong>Email:</strong> orbosisfoundation@gmail.com</p>
+            <p style="margin: 2px 0;"><strong>Web:</strong> www.orbosisfoundation.org</p>
+        </div>
+    </div>
+
+    <div class="receipt-title">DONATION RECEIPT (80G)</div>
+
+    <table class="details-table">
+        <tr><td class="label">Receipt Number:</td><td class="value">{{receiptNo}}</td></tr>
+        <tr><td class="label">Transaction ID:</td><td class="value">{{transactionId}}</td></tr>
+        <tr><td class="label">Date of Donation:</td><td class="value">{{date}}</td></tr>
+        <tr><td class="label">Donor Name:</td><td class="value">{{donorName}}</td></tr>
+        <tr><td class="label">Donor PAN:</td><td class="value">{{donorPan}}</td></tr>
+        <tr><td class="label">Payment Mode:</td><td class="value">Online (Razorpay)</td></tr>
+    </table>
+
+    <div class="amount-box">
+        <p style="margin: 0; font-size: 11px; color: #666;">Total Amount Received:</p>
+        <p class="amount-text">₹ {{amount}} /-</p>
+        <p class="amount-words">(Rupees {{amountInWords}} Only)</p>
+    </div>
+
+    <div class="signature-section">
+        <div class="signature-box">
+            <p style="color: #1a5f7a; font-weight: bold; font-size: 12px; margin-bottom: 2px;">For {{ngoName}}</p>
+            <img src="{{signature}}" class="signature-img" alt="Signature" />
+            <div class="sig-line">Authorised Signatory</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Eligible for deduction under <strong>Section 80G of the Income Tax Act, 1961</strong>.</p>
+        <p>This is a computer-generated receipt. No physical signature required.</p>
+        <p style="margin-top: 5px; color: #1a5f7a; font-weight: bold;">Thank you for your support!</p>
     </div>
 </div>
 </body>
