@@ -85,10 +85,10 @@ export const markNotificationAsRead = async (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" 
-  };
-    
-    
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 export const getVolunteerNotifications = async (req, res) => {
   try {
     const notifications = await Notification.find({
