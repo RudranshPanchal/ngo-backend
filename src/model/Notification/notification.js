@@ -17,10 +17,15 @@ const notificationSchema = new mongoose.Schema(
     message: String,
 
     type: {
-      type: String, // member-application, donation, approval, etc.
+      type: String, // member-application, donation, approval, id-card, certificate, appointment-letter, event, etc.
     },
     
     role: { type: String },
+
+    redirectUrl: {
+      type: String, // URL where notification should redirect
+      default: null,
+    },
 
     read: {
       type: Boolean,

@@ -25,9 +25,25 @@ const memberSchema = new mongoose.Schema(
     specialRequirement: { type: String },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "approved", "rejected", "blocked"],
       default: "pending",
     },
+    appointmentLetterIssued: {
+  type: Boolean,
+  default: false,
+},
+appointmentLetterUrl: {
+  type: String,
+},
+    appointmentLetterPDF: { type: Buffer }, // Store PDF binary
+appointmentLetterDate: {
+  type: Date,
+},
+    // ================= CERTIFICATE FIELDS =================
+    membershipCertificateIssued: { type: Boolean, default: false },
+    membershipCertificatePDF: { type: Buffer }, // Store PDF binary
+    membershipCertificateDate: { type: Date },
+
     approvedAt: { type: Date },
     memberId: {
       type: String,
@@ -35,17 +51,16 @@ const memberSchema = new mongoose.Schema(
       default: () => `MEM${Date.now()}`,
     },
     // ================= ID CARD FIELDS =================
-      idCardIssued: {
-        type: Boolean,
-        default: false,
-      },
-      idCardIssueDate: {
-        type: Date,
-      },
-      idCardUrl: {
-        type: String, // /uploads/id-cards/ID_xxx.pdf
-      },
-
+    idCardIssued: {
+      type: Boolean,
+      default: false,
+    },
+    idCardIssueDate: {
+      type: Date,
+    },
+    idCardUrl: {
+      type: String, // /uploads/id-cards/ID_xxx.pdf
+    },
   },
   { timestamps: true }
 );
