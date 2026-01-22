@@ -749,6 +749,7 @@ export const getAdminDashboard = async (req, res) => {
         const donationAmount = completedDonations.reduce((total, donation) => total + donation.amount, 0);
 
         res.status(200).json({
+            success: true,
             message: "Admin dashboard data retrieved successfully",
             dashboard: {
                 totalMembers,
@@ -771,6 +772,7 @@ export const getRecentActivity = async (req, res) => {
             .limit(10); // Limit to 10 most recent users
 
         res.status(200).json({
+            success: true,
             message: "Recent activity retrieved successfully",
             recentActivity: recentUsers.map(user => ({
                 email: user.email,
