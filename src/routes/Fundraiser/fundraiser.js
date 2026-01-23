@@ -27,11 +27,18 @@ import {
 } from "../../controller/Fundraiser/fundraiser.js";
 
 import { requireAuth, requireAdmin } from "../../middleware/auth.js";
+import { upload } from "../../utils/multer.js";
 
 const router = express.Router();
 
+// Configure Multer for file uploads
+const uploadFields = upload.fields([
+  { name: "aadharCard", maxCount: 1 },
+  { name: "panCard", maxCount: 1 },
+]);
+
 // Fundraiser register (OTP verified)
-router.post("/register", registerFundraiser);
+router.post("/register", uploadFields, registerFundraiser);
 
 // Admin only
 router.get("/admin/all", requireAuth, requireAdmin, getFundraisers);

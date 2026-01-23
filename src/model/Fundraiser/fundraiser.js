@@ -86,6 +86,24 @@ const fundraiserSchema = new mongoose.Schema(
       required: true,
     },
 
+    // Verification Flags
+    isPhoneVerified: {
+      type: Boolean,
+      default: false,
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Documents (URLs from Cloudinary)
+    aadharCard: {
+      type: String,
+    },
+    panCard: {
+      type: String,
+    },
+
     status: {
       type: String,
       enum: ["pending", "approved", "rejected"],

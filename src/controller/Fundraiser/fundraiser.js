@@ -101,20 +101,43 @@
 // import SignupOtp from "../../model/SignupOtp/SignupOtp.js";
 import User from "../../model/Auth/auth.js";
 import bcrypt from "bcrypt";
+import { uploadToCloudinary } from "../../utils/uploader.js";
+import Notification from "../../model/Notification/notification.js";
+import { sendFundraiserWelcomeEmail } from "../../utils/mail.js";
+
+const generateFundraiserPassword = (name, mobile) => {
+  if (!name || !mobile) return null;
+
+  // first 3 letters of name
+  const cleanName = name.replace(/\s+/g, "");
+  const namePart = cleanName.substring(0, 3).toLowerCase();
+
+  // last 4 digits of mobile
+  const mobileStr = mobile.toString();
+  if (mobileStr.length < 4) return null;
+
+  const last4 = mobileStr.slice(-4);
+
+  return `${namePart}@${last4}`;
+};
 
 // ================= REGISTER FUNDRAISER (PENDING) =================
 export const registerFundraiser = async (req, res) => {
   try {
+    console.log("📥 Register Fundraiser Files:", req.files);
+    console.log("📥 Register Fundraiser Request Body:", req.body);
+
     const {
       fullName,
       email,
       mobile,
-      password,
       fundraiserType,
       reason,
+      isPhoneVerified,
+      isEmailVerified
     } = req.body;
 
-    if (!fullName || !email || !password) {
+    if (!fullName || !email || !mobile || !fundraiserType || !reason) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -136,25 +159,68 @@ export const registerFundraiser = async (req, res) => {
       return res.status(400).json({ message: "Fundraiser already registered" });
     }
 
-    const hash = await bcrypt.hash(password, 10);
+    // Handle File Uploads
+    let aadharCardUrl = "";
+    let panCardUrl = "";
+
+    try {
+        if (req.files) {
+            if (req.files.aadharCard && req.files.aadharCard[0]) {
+                console.log("Uploading Aadhar Card...");
+                aadharCardUrl = await uploadToCloudinary(req.files.aadharCard[0], "fundraiser-docs");
+                console.log("Aadhar URL:", aadharCardUrl);
+            }
+            if (req.files.panCard && req.files.panCard[0]) {
+                console.log("Uploading Pan Card...");
+                panCardUrl = await uploadToCloudinary(req.files.panCard[0], "fundraiser-docs");
+                console.log("Pan URL:", panCardUrl);
+            }
+        }
+    } catch (uploadError) {
+        console.error("❌ Cloudinary Upload Error:", uploadError);
+        return res.status(500).json({ message: "File upload failed: " + uploadError.message });
+    }
+
+    // ⚠️ Generate dummy password to satisfy Schema if 'password' is required
+    const dummyPassword = await bcrypt.hash("Pending@123", 10);
 
     await Fundraiser.create({
       fullName,
       email,
       mobile,
-      password: hash,
       fundraiserType,
       reason,
       status: "pending",
+      password: dummyPassword, // Added to prevent Schema Validation Error
+      isPhoneVerified: isPhoneVerified === 'true' || isPhoneVerified === true,
+      isEmailVerified: isEmailVerified === 'true' || isEmailVerified === true,
+      aadharCard: aadharCardUrl,
+      panCard: panCardUrl
     });
 
-    // cleanup OTP
-    // await SignupOtp.deleteOne({ email, role: "fundraiser" });
+    // Notification
+    try {
+        const newNotification = await Notification.create({
+            userType: "admin",
+            message: `New fundraiser registration from ${fullName}.`,
+            type: "fundraiser-registration",
+            role: "fundraiser",
+            read: false
+        });
+
+        const io = req.app.get("io");
+        if (io) {
+            io.to("admins").emit("admin-notification", newNotification);
+        }
+    } catch (notifyError) {
+        console.error("⚠️ Notification Error:", notifyError);
+    }
 
     return res.status(201).json({
       message: "Fundraiser registered, pending admin approval",
     });
   } catch (err) {
+    console.error("❌ Register Fundraiser Controller Error:", err.message);
     return res.status(500).json({ message: err.message });
   }
 };
@@ -188,45 +254,86 @@ export const updateFundraiserStatus = async (req, res) => {
       return res.status(404).json({ message: "Fundraiser not found" });
     }
 
+    let generatedPassword;
+
     if (status === "approved") {
-  const existingUser = await User.findOne({
-    email: fundraiser.email,
-    role: "fundraiser",
-  });
+      let user = await User.findOne({
+        email: fundraiser.email,
+        role: "fundraiser",
+      });
 
-  if (existingUser) {
-    return res.status(400).json({ message: "User already exists" });
-  }
+      // 1. Generate Password (Donor Logic: Name@Last4Mobile)
+      generatedPassword = generateFundraiserPassword(fundraiser.fullName, fundraiser.mobile);
+      if (!generatedPassword) {
+         // Fallback
+         generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+      }
+      
+      const hash = await bcrypt.hash(generatedPassword, 10);
 
-  // ✅ memberId generate
-  const cleanName = (fundraiser.fullName || "fundraiser")
-    .toLowerCase()
-    .replace(/\s+/g, "");
+      // 2. Create or Update User
+      if (!user) {
+        // Create new user
+        const cleanName = (fundraiser.fullName || "fundraiser").toLowerCase().replace(/\s+/g, "");
+        const uniqueSuffix = Math.random().toString(36).substring(2, 6);
+        const memberId = `${cleanName}-${uniqueSuffix}`;
 
-  const uniqueSuffix = Math.random().toString(36).substring(2, 6);
-  const memberId = `${cleanName}-${uniqueSuffix}`;
+        user = await User.create({
+          fullName: fundraiser.fullName,
+          email: fundraiser.email,
+          password: hash,
+          role: "fundraiser",
+          memberId,
+          contactNumber: fundraiser.mobile,
+          emailVerified: fundraiser.isEmailVerified,
+          phoneVerified: fundraiser.isPhoneVerified,
+          tempPassword: true,
+          createdBy: adminId,
+        });
+      } else {
+        // Update existing user (Fixes "User already exists" error)
+        user.password = hash;
+        user.tempPassword = true;
+        user.fullName = fundraiser.fullName;
+        user.contactNumber = fundraiser.mobile;
+        user.emailVerified = fundraiser.isEmailVerified;
+        user.phoneVerified = fundraiser.isPhoneVerified;
+        await user.save();
+      }
 
-  await User.create({
-    fullName: fundraiser.fullName,
-    email: fundraiser.email,
-    password: fundraiser.password, // already hashed
-    role: "fundraiser",             // ✅ now valid
-    memberId,                       // ✅ MOST IMPORTANT
-    contactNumber: fundraiser.mobile,
-    emailVerified: true,
-    createdBy: adminId,
-  });
+      fundraiser.status = "approved";
+      fundraiser.approvedBy = adminId;
+      fundraiser.approvedAt = new Date();
+      await fundraiser.save();
 
-  fundraiser.status = "approved";
-  fundraiser.approvedBy = adminId;
-  fundraiser.approvedAt = new Date();
-  await fundraiser.save();
-}
+      // Send Email
+      try {
+          await sendFundraiserWelcomeEmail({
+              toEmail: fundraiser.email,
+              fullName: fundraiser.fullName,
+              email: fundraiser.email,
+              password: generatedPassword,
+              memberId: user.memberId
+          });
+      } catch (emailErr) {
+          console.error("Failed to send welcome email:", emailErr);
+      }
+    } else if (status === "rejected") {
+        fundraiser.status = "rejected";
+        fundraiser.adminRemark = adminRemark;
 
+        // If rejecting after approval, remove the user to keep data clean
+        const userToDelete = await User.findOne({ email: fundraiser.email, role: "fundraiser" });
+        if (userToDelete) {
+            await User.findByIdAndDelete(userToDelete._id);
+        }
+        await fundraiser.save();
+    }
 
     return res.json({
       success: true,
       message: `Fundraiser request ${status} successfully`,
+      generatedPassword: status === "approved" ? generatedPassword : undefined,
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
