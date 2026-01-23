@@ -106,6 +106,28 @@ export const getMyTasks = async (req, res) => {
     }
 };
 
+// For admin to view tasks of a specific volunteer
+export const getVolunteerTasks = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const tasks = await Task.find({ assignedTo: id })
+            .populate("event", "title")
+            .sort({ createdAt: -1 });
+
+        res.json({
+            success: true,
+            tasks,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+
 export const updateTaskStatus = async (req, res) => {
     try {
         const { taskId } = req.params;

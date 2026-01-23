@@ -69,7 +69,7 @@ export const uploadToCloudinary = (file, folder) => {
         resolve(result.secure_url);
       });
     }
-    // 3. Handle Multer File with Path (DiskStorage)
+    // 2. Handle Path (DiskStorage)
     else if (file.path) {
       const uploadOptions = {
         folder,
@@ -81,8 +81,8 @@ export const uploadToCloudinary = (file, folder) => {
           console.error("❌ Cloudinary Upload ERROR (Path):", error);
           return reject(error);
         }
-        
-        // Delete local file
+
+        // Optional: Delete local file after upload
         try {
           if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
         } catch (e) {
@@ -92,7 +92,25 @@ export const uploadToCloudinary = (file, folder) => {
         console.log("Cloudinary upload successful (Path):", result.secure_url);
         resolve(result.secure_url);
       });
-    } else {
+    }
+    // 3. Handle Raw Buffer (e.g. PDF generation)
+    else if (Buffer.isBuffer(file)) {
+      const dataUri = `data:application/pdf;base64,${file.toString("base64")}`;
+      const options = {
+        folder,
+        resource_type: "raw",
+        format: "pdf"
+      };
+
+      cloudinary.uploader.upload(dataUri, options, (error, result) => {
+        if (error) {
+          console.error("❌ Cloudinary Upload ERROR:", error);
+          return reject(error);
+        }
+        resolve(result.secure_url);
+      });
+    }
+    else {
       resolve(null);
     }
   });
