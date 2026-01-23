@@ -325,6 +325,23 @@ const receiptData = {
                 io.to("admins").emit("admin-notification", newNotification);
                 console.log('🔔 Admin notification sent for new donation.');
             }
+
+            // ✅ UPDATE MEMBER STATS IF USER IS A MEMBER
+            if (donation.userId) {
+                try {
+                    const user = await User.findById(donation.userId);
+                    if (user && user.role === 'member' && user.memberId) {
+                        const Member = (await import("../../model/Member/member.js")).default;
+                        await Member.findOneAndUpdate(
+                            { memberId: user.memberId },
+                            { $inc: { totalDonations: donation.amount } }
+                        );
+                        console.log(`✅ Member ${user.memberId} totalDonations updated by ₹${donation.amount}`);
+                    }
+                } catch (memberErr) {
+                    console.error("❌ Failed to update member stats:", memberErr.message);
+                }
+            }
         }
 
         // 7. Success Response
@@ -343,10 +360,14 @@ const receiptData = {
 export const getUserDonations = async (req, res) => {
   try {
     const userId = req.user._id; 
+    const userEmail = req.user.email;
     
     // Yahan Donation collection se data uthega
     const donations = await Donation.find({ 
-      userId: userId,
+      $or: [
+        { userId: userId },
+        { donorEmail: userEmail }
+      ],
       paymentStatus: "completed" 
     }).sort({ createdAt: -1 });
 
@@ -363,8 +384,13 @@ export const getUserDonations = async (req, res) => {
 export const getDonorStats = async (req, res) => {
     try {
         const userId = req.user._id;
+        const userEmail = req.user.email;
         
-        const donations = await Donation.find({ userId, paymentStatus: 'completed' });
+        const donations = await Donation.find({ 
+            $or: [{ userId: userId }, { donorEmail: userEmail }],
+            paymentStatus: 'completed' 
+        });
+
         const totalDonated = donations.reduce((sum, d) => sum + d.amount, 0);
         const donationsCount = donations.length;
         
