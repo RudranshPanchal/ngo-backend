@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { sendEmail, sendVolunteerApplicationReceivedEmail, sendVolunteerWelcomeEmail, sendVolunteerRejectionEmail } from "../../utils/mail.js";
 import { getLocalFileUrl } from "../../utils/multer.js";
 import { generateTempPassword } from "../../utils/generateTempPassword.js";
+import { uploadToCloudinary } from "../../utils/uploader.js";
 
 import bcrypt from "bcrypt";
 import User from "../../model/Auth/auth.js";
@@ -11,13 +12,22 @@ import Event from "../../model/Event/event.js";
 import EventApplication from "../../model/Event/eventApplication.js";
 import { calculateVolunteerLevel } from "../../utils/volunteerLevel.js";
 import Notification from "../../model/Notification/notification.js";
+import { getVolunteerStatsService } from "../../services/volunteerStats.js";
 
 // controller/Volunteer/volunteer.js
 
 export const registerVolunteer = async (req, res) => {
   try {
+    let uploadIdProof = null;
     if (req.file) {
-      req.body.uploadIdProof = getLocalFileUrl(req.file);
+      // req.body.uploadIdProof = getLocalFileUrl(req.file);
+      // Upload to Cloudinary
+      uploadIdProof = await uploadToCloudinary(req.file, "volunteer-id-proofs");
+      console.log("Uploaded ID Proof URL:", uploadIdProof);
+
+      if (!uploadIdProof) {
+        throw new Error("Cloudinary upload failed: No URL returned");
+      }
     }
 
     const volunteerId = `VOL-${new mongoose.Types.ObjectId().toHexString().slice(-6).toUpperCase()}`;
@@ -34,6 +44,7 @@ export const registerVolunteer = async (req, res) => {
     const volunteerData = {
       ...req.body,
       volunteerId,
+      uploadIdProof: uploadIdProof,
       isEmailVerified: req.body.isEmailVerified === 'true' || req.body.isEmailVerified === true,
       isPhoneVerified: req.body.isPhoneVerified === 'true' || req.body.isPhoneVerified === true,
     };
@@ -194,96 +205,199 @@ export const getAllVolunteers = async (req, res) => {
 // };
 
 
+// export const getVolunteerStats = async (req, res) => {
+//   try {
+//     const userId = req.user._id;
+
+//     // 1. TASK STATS
+//     const totalTasks = await Task.countDocuments({ assignedTo: userId });
+//     const completedTasks = await Task.countDocuments({
+//       assignedTo: userId,
+//       status: 'completed'
+//     });
+
+//     const completedTasksList = await Task.find({
+//       assignedTo: userId,
+//       status: 'completed'
+//     }).select('estimatedHours event');
+
+//     const hoursContributed = completedTasksList.reduce(
+//       (acc, curr) => acc + (Number(curr.estimatedHours) || 0),
+//       0
+//     );
+
+//     // 2. EVENT IDS FROM TASKS
+//     // const taskEventIds = completedTasksList
+//     //   .filter(t => t.event)
+//     //   .map(t => t.event.toString());
+
+//     // 3. EVENTS VIA TASKS (NO STATUS CHECK)
+//     // const taskBasedEvents = await Event.find({
+//     //   _id: { $in: taskEventIds }
+//     // }).select('_id');
+
+//     // 4. EVENTS VIA PARTICIPATION
+
+//     const uniqueEventIds = new Set(
+//       completedTasksList
+//         .filter(t => t.event)
+//         .map(t => t.event.toString())
+//     );
+
+//     const eventsAttended = uniqueEventIds.size;
+
+
+//     // const participantEvents = await Event.find({
+//     //   participants: userId
+//     // }).select('_id');
+
+//     // const uniqueEventIds = new Set([
+//     //   ...taskBasedEvents.map(e => e._id.toString()),
+//     //   ...participantEvents.map(e => e._id.toString())
+//     // ]);
+
+//     // const eventsAttended = uniqueEventIds.size;
+
+//     // 5. IMPACT SCORE
+//     const impactScore =
+//       (completedTasks * 10) +
+//       (hoursContributed * 5) +
+//       (eventsAttended * 20);
+
+//     // 6. LEVEL
+//     const levelData = calculateVolunteerLevel(impactScore);
+
+//     // 7. UPDATE USER
+//     await User.findByIdAndUpdate(userId, {
+//       impactScore,
+//       hoursVolunteered: hoursContributed,
+//       volunteerLevel: levelData.level,
+//       volunteerLevelName: levelData.name
+//     });
+
+//     res.json({
+//       success: true,
+//       stats: {
+//         totalTasks,
+//         completedTasks,
+//         hoursContributed,
+//         eventsAttended,
+//         impactScore,
+//         level: levelData.level,
+//         levelName: levelData.name,
+//         certificatesEarned: 0
+//       }
+//     });
+//   } catch (error) {
+//     console.error("Stats error:", error);
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// };
+
+
+// for Volunteers 
 export const getVolunteerStats = async (req, res) => {
+  console.log("VOLUNTEER STATS CONTROLLER HIT");
+
   try {
     const userId = req.user._id;
 
-    // 1. TASK STATS
-    const totalTasks = await Task.countDocuments({ assignedTo: userId });
-    const completedTasks = await Task.countDocuments({
-      assignedTo: userId,
-      status: 'completed'
-    });
-
-    const completedTasksList = await Task.find({
-      assignedTo: userId,
-      status: 'completed'
-    }).select('estimatedHours event');
-
-    const hoursContributed = completedTasksList.reduce(
-      (acc, curr) => acc + (Number(curr.estimatedHours) || 0),
-      0
-    );
-
-    // 2. EVENT IDS FROM TASKS
-    const taskEventIds = completedTasksList
-      .filter(t => t.event)
-      .map(t => t.event.toString());
-
-    // 3. EVENTS VIA TASKS (NO STATUS CHECK)
-    const taskBasedEvents = await Event.find({
-      _id: { $in: taskEventIds }
-    }).select('_id');
-
-    // 4. EVENTS VIA PARTICIPATION
-
-    const uniqueEventIds = new Set(
-      completedTasksList
-        .filter(t => t.event)
-        .map(t => t.event.toString())
-    );
-
-    const eventsAttended = uniqueEventIds.size;
-
-
-    // const participantEvents = await Event.find({
-    //   participants: userId
-    // }).select('_id');
-
-    // const uniqueEventIds = new Set([
-    //   ...taskBasedEvents.map(e => e._id.toString()),
-    //   ...participantEvents.map(e => e._id.toString())
-    // ]);
-
-    // const eventsAttended = uniqueEventIds.size;
-
-    // 5. IMPACT SCORE
-    const impactScore =
-      (completedTasks * 10) +
-      (hoursContributed * 5) +
-      (eventsAttended * 20);
-
-    // 6. LEVEL
-    const levelData = calculateVolunteerLevel(impactScore);
-
-    // 7. UPDATE USER
-    await User.findByIdAndUpdate(userId, {
-      impactScore,
-      hoursVolunteered: hoursContributed,
-      volunteerLevel: levelData.level,
-      volunteerLevelName: levelData.name
-    });
+    const stats = await getVolunteerStatsService(userId);
 
     res.json({
       success: true,
-      stats: {
-        totalTasks,
-        completedTasks,
-        hoursContributed,
-        eventsAttended,
-        impactScore,
-        level: levelData.level,
-        levelName: levelData.name,
-        certificatesEarned: 0
-      }
+      stats,
     });
   } catch (error) {
     console.error("Stats error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
+// for Admins
+export const getVolunteerStatsById = async (req, res) => {
+  try {
+    const { id } = req.params;
 
+    // 1. Prevent collision & Validate ID
+    if (id === 'stats' || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid Volunteer ID" });
+    }
+
+    // 2. Role Check
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    // 3. Resolve User ID from Volunteer ID
+    const volunteer = await Volunteer.findById(id);
+    if (!volunteer) {
+      return res.status(404).json({ success: false, message: "Volunteer not found" });
+    }
+
+    let targetUserId = volunteer.userRef;
+
+    // Fallback: Try to find user by email if userRef is missing
+    if (!targetUserId) {
+      const user = await User.findOne({ email: volunteer.email });
+      if (user) targetUserId = user._id;
+    }
+
+    if (!targetUserId) {
+      return res.status(404).json({ success: false, message: "Linked User account not found" });
+    }
+
+    const stats = await getVolunteerStatsService(targetUserId);
+
+    res.json({
+      success: true,
+      stats,
+    });
+  } catch (error) {
+    console.error("Admin stats error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Get Volunteer Tasks by Volunteer ID (Admin View)
+export const getVolunteerTasksById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid Volunteer ID" });
+    }
+
+    const volunteer = await Volunteer.findById(id);
+    if (!volunteer) {
+      return res.status(404).json({ success: false, message: "Volunteer not found" });
+    }
+
+    // Resolve User ID from Volunteer
+    let targetUserId = volunteer.userRef;
+    if (!targetUserId) {
+      const user = await User.findOne({ email: volunteer.email });
+      if (user) targetUserId = user._id;
+    }
+
+    if (!targetUserId) {
+      return res.json({ success: true, tasks: [] });
+    }
+
+    const tasks = await Task.find({ assignedTo: targetUserId }).sort({ createdAt: -1 });
+
+    res.json({ success: true, tasks });
+  } catch (error) {
+    console.error("Error fetching volunteer tasks:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 // 🛠️ DEBUG: Seed Data for Stats
 // export const seedVolunteerStatsData = async (req, res) => {

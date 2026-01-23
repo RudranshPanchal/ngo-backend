@@ -57,7 +57,7 @@ export const uploadToCloudinary = (file, folder) => {
         console.log("Cloudinary upload successful:", result.secure_url);
         resolve(result.secure_url);
       });
-    } 
+    }
     // 2. Handle Path (DiskStorage)
     else if (file.path) {
       const uploadOptions = {
@@ -76,7 +76,7 @@ export const uploadToCloudinary = (file, folder) => {
           console.error("Cloudinary Upload ERROR (Path):", error);
           return reject(error);
         }
-        
+
         // Optional: Delete local file after upload
         try {
           fs.unlinkSync(file.path);
@@ -87,35 +87,26 @@ export const uploadToCloudinary = (file, folder) => {
         console.log("Cloudinary upload successful (Path):", result.secure_url);
         resolve(result.secure_url);
       });
-    } else {
+    }
+    // 3. Handle Raw Buffer (e.g. PDF generation)
+    else if (Buffer.isBuffer(file)) {
+      const dataUri = `data:application/pdf;base64,${file.toString("base64")}`;
+      const options = {
+        folder,
+        resource_type: "raw",
+        format: "pdf"
+      };
+
+      cloudinary.uploader.upload(dataUri, options, (error, result) => {
+        if (error) {
+          console.error("❌ Cloudinary Upload ERROR:", error);
+          return reject(error);
+        }
+        resolve(result.secure_url);
+      });
+    }
+    else {
       resolve(null);
     }
-    
-    let dataUri;
-    let options = { folder };
-
-    // 1. Agar ye PDF Buffer hai (Jo verifyDonationPayment se aayega)
-    if (Buffer.isBuffer(file)) {
-      dataUri = `data:application/pdf;base64,${file.toString("base64")}`;
-      options.resource_type = "raw"; // PDF ke liye 'raw' zaroori hai
-      options.format = "pdf";
-    } 
-    // 2. Agar ye Normal File hai (Jo Multer/Frontend se aayegi)
-    else if (file && file.buffer) {
-      dataUri = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
-      options.resource_type = file.mimetype === "application/pdf" ? "raw" : "image";
-    } 
-    else {
-      return resolve(null);
-    }
-
-    // Cloudinary Upload Call
-    cloudinary.uploader.upload(dataUri, options, (error, result) => {
-      if (error) {
-        console.error("❌ Cloudinary Upload ERROR:", error);
-        return reject(error);
-      }
-      resolve(result.secure_url);
-    });
   });
 };
