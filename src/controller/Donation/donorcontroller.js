@@ -20,8 +20,6 @@ const generateDonorPassword = (name, mobile) => {
   return `${namePart}@${last4}`;
 };
 
-
-
 /* ================= REGISTER DONOR ================= */
 export const registerDonor = async (req, res) => {
   try {
@@ -29,7 +27,7 @@ export const registerDonor = async (req, res) => {
       req.body.fundraisingId && req.body.fundraisingId !== ""
         ? req.body.fundraisingId
         : null;
-       console.log("REQ BODY ===>", req.body);
+    console.log("REQ BODY ===>", req.body);
 
     const donorEntry = await DonationReg.create({
       userId: req.user?._id || null,
@@ -40,9 +38,15 @@ export const registerDonor = async (req, res) => {
       email: req.body.email,
       panNumber: req.body.panNumber,
       gstNumber: req.body.gstNumber,
-        isPhoneVerified: req.body.isPhoneVerified === 'true' || req.body.isPhoneVerified === true || false,
-    isEmailVerified: req.body.isEmailVerified === 'true' || req.body.isEmailVerified === true || false,
-       status: "pending",
+      isPhoneVerified:
+        req.body.isPhoneVerified === "true" ||
+        req.body.isPhoneVerified === true ||
+        false,
+      isEmailVerified:
+        req.body.isEmailVerified === "true" ||
+        req.body.isEmailVerified === true ||
+        false,
+      status: "pending",
       donationAmount: req.body.donationAmount,
       fundraisingId: safeFundId,
       uploadPaymentProof: req.file ? req.file.path : "",
@@ -51,31 +55,30 @@ export const registerDonor = async (req, res) => {
     // UPDATE FUNDRAISING AMOUNT
     if (safeFundId) {
       const Fund = await import("../../model/fundraising/fundraising.js").then(
-        (m) => m.default
+        (m) => m.default,
       );
 
       const fundItem = await Fund.findById(safeFundId);
       if (fundItem) {
         fundItem.payment =
-          Number(fundItem.payment || 0) +
-          Number(req.body.donationAmount || 0);
+          Number(fundItem.payment || 0) + Number(req.body.donationAmount || 0);
         await fundItem.save();
       }
     }
 
     // 🔔 SAVE & SEND NOTIFICATION (Database + Real-time)
     const newNotification = await Notification.create({
-        userType: "admin",
-        message: `New donor registration from ${req.body.fullName} for ₹${req.body.donationAmount}.`,
-        type: "donor-registration",
-        role: "donor",
-        read: false
+      userType: "admin",
+      message: `New donor registration from ${req.body.fullName} for ₹${req.body.donationAmount}.`,
+      type: "donor-registration",
+      role: "donor",
+      read: false,
     });
 
     const io = req.app.get("io");
     if (io) {
-        io.to("admins").emit("admin-notification", newNotification);
-        console.log('🔔 Admin notification sent for new donor registration.');
+      io.to("admins").emit("admin-notification", newNotification);
+      console.log("🔔 Admin notification sent for new donor registration.");
     }
 
     return res.json({
@@ -151,10 +154,11 @@ export const getDonorDashboard = async (req, res) => {
     });
   }
 };
- export const getPendingDonors = async (req, res) => {
+export const getPendingDonors = async (req, res) => {
   try {
-    const donors = await DonationReg.find({ status: "pending" })
-      .sort({ createdAt: -1 });
+    const donors = await DonationReg.find({ status: "pending" }).sort({
+      createdAt: -1,
+    });
 
     res.json({
       success: true,
@@ -170,7 +174,7 @@ export const updateDonorStatus = async (req, res) => {
     const { id } = req.params;
     const { status, password } = req.body;
     let finalPassword = password; // Declare password variable here
-console.log(password);    
+    console.log(password);
     if (!["approved", "rejected"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
@@ -194,18 +198,15 @@ console.log(password);
 
       // 1. Generate Password if not provided by admin
       if (!finalPassword) {
-  finalPassword = generateDonorPassword(
-    donor.name,
-    donor.contactNumber
-  );
+        finalPassword = generateDonorPassword(donor.name, donor.contactNumber);
 
-  if (!finalPassword) {
-    return res.status(400).json({
-      message: "Donor name or mobile number missing for password generation"
-    });
-  }
-}
-
+        if (!finalPassword) {
+          return res.status(400).json({
+            message:
+              "Donor name or mobile number missing for password generation",
+          });
+        }
+      }
 
       console.log("🔐 DONOR LOGIN PASSWORD (PLAIN):", finalPassword);
       const hashedPassword = await bcrypt.hash(finalPassword, 10);
@@ -225,24 +226,26 @@ console.log(password);
           organisationName: donor.organisationName,
           address: donor.address,
           panNumber: donor.panNumber,
-          gstNumber: donor.gstNumber
+          gstNumber: donor.gstNumber,
         });
       } else {
         // ⚠️ Security: Admin account ko overwrite mat karo
-        if (user.role === 'admin') {
-            return res.status(400).json({ message: "Cannot approve donor request linked to an Admin email." });
+        if (user.role === "admin") {
+          return res.status(400).json({
+            message: "Cannot approve donor request linked to an Admin email.",
+          });
         }
-        
+
         // ✅ Existing user ka password update karo taaki email wala password kaam kare
         user.password = hashedPassword;
         user.tempPassword = true;
         await user.save();
       }
-await Donation.findOneAndUpdate(
-  { donorEmail: donor.email, userId: null }, 
- { $set: { userId: user._id } },// User ID ko null se badal kar actual ID set karein
-  { sort: { createdAt: -1 } } // Sabse latest donation update karein
-);
+      await Donation.findOneAndUpdate(
+        { donorEmail: donor.email, userId: null },
+        { $set: { userId: user._id } }, // User ID ko null se badal kar actual ID set karein
+        { sort: { createdAt: -1 } }, // Sabse latest donation update karein
+      );
       // 2. Create Donation Record (Important)
       // await Donation.create({
       //   userId: user._id,
@@ -260,17 +263,17 @@ await Donation.findOneAndUpdate(
       donor.status = "approved";
       donor.approvedAt = new Date();
       donor.approvedBy = req.user._id;
-      
+
       await donor.save();
 
       // 4. Send Email
       try {
-      //   await sendDonorWelcomeEmail({
-      //     toEmail: user.email,
-      //     fullName: user.fullName,
-      //     email: user.email,
-      //     password: finalPassword
-      //     });
+        //   await sendDonorWelcomeEmail({
+        //     toEmail: user.email,
+        //     fullName: user.fullName,
+        //     email: user.email,
+        //     password: finalPassword
+        //     });
       } catch (mailError) {
         console.error("Mail sending failed:", mailError);
       }
@@ -282,7 +285,6 @@ await Donation.findOneAndUpdate(
       // Conditionally add the generated password to the response for the admin
       ...(status === "approved" && { generatedPassword: finalPassword }),
     });
-
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: err.message });
@@ -297,30 +299,30 @@ export const getAllDonors = async (req, res) => {
 // import Donor from "../../model/Donation/donor.js"; // Aapka donor model ka sahi path
 
 export const getSingleDonor = async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        // Yahan DonationReg use kar kyunki tune upar wahi import kiya hai
-        const donor = await DonationReg.findById(id); 
-        
-        if (!donor) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Donor details not found" 
-            });
-        }
+  try {
+    const { id } = req.params;
 
-        res.status(200).json({ 
-            success: true, 
-            data: donor 
-        });
-    } catch (err) {
-        console.error("❌ Error:", err.message);
-        res.status(500).json({ 
-            success: false, 
-            message: "Internal Server Error: " + err.message 
-        });
+    // Yahan DonationReg use kar kyunki tune upar wahi import kiya hai
+    const donor = await DonationReg.findById(id);
+
+    if (!donor) {
+      return res.status(404).json({
+        success: false,
+        message: "Donor details not found",
+      });
     }
+
+    res.status(200).json({
+      success: true,
+      data: donor,
+    });
+  } catch (err) {
+    console.error("❌ Error:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error: " + err.message,
+    });
+  }
 };
 // import DonationReg from "../../model/donor_reg/donor_reg.js";
 
@@ -333,7 +335,7 @@ export const getDonorProfile = async (req, res) => {
     // 2️⃣ Agar donor profile nahi hai
     if (!donor) {
       const user = await User.findById(req.user._id).select(
-        "fullName email contactNumber organisationName address panNumber gstNumber"
+        "fullName email contactNumber organisationName address panNumber gstNumber",
       );
 
       if (!user) {
@@ -361,12 +363,10 @@ export const getDonorProfile = async (req, res) => {
 
     // 3️⃣ Normal donor profile
     res.json({ success: true, data: donor });
-
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
 
 /* ================= UPDATE DONOR PROFILE ================= */
 export const updateDonorProfile = async (req, res) => {
@@ -377,7 +377,8 @@ export const updateDonorProfile = async (req, res) => {
     if (req.body.gstNumber) update.gstNumber = req.body.gstNumber;
     if (req.body.address) update.address = req.body.address;
     if (req.body.contactNumber) update.contactNumber = req.body.contactNumber;
-    if (req.body.organisationName) update.organisationName = req.body.organisationName;
+    if (req.body.organisationName)
+      update.organisationName = req.body.organisationName;
 
     // ✅ 1. Update User Collection (Critical for Receipt & Login)
     await User.findByIdAndUpdate(userId, { $set: update });
@@ -386,7 +387,7 @@ export const updateDonorProfile = async (req, res) => {
     const donor = await DonationReg.findOneAndUpdate(
       { userId: userId },
       { $set: update },
-      { new: true }
+      { new: true },
     );
 
     res.json({ success: true, data: donor || update });

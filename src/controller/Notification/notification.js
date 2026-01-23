@@ -66,7 +66,7 @@ export const markMemberNotificationsAsRead = async (req, res) => {
 
     await Notification.updateMany(
       { userType: "member", userId: { $in: targetIds }, read: false },
-      { $set: { read: true } }
+      { $set: { read: true } },
     );
 
     res.json({ success: true });
@@ -108,7 +108,7 @@ export const markVolunteerNotificationsAsRead = async (req, res) => {
   try {
     await Notification.updateMany(
       { userType: "volunteer", userId: req.user._id, read: false },
-      { $set: { read: true } }
+      { $set: { read: true } },
     );
     res.json({ success: true });
   } catch (error) {
