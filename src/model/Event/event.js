@@ -36,13 +36,20 @@ const eventSchema = new mongoose.Schema(
       default: true
     },
 
+    applicants: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }],
+
     requirements: [String],
 
     maxParticipants: { type: Number, required: true },
+
     participants: {
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
       default: []
     },
+    
     currentParticipants: {
       type: Number,
       default: 0

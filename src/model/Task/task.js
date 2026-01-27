@@ -19,6 +19,12 @@ const taskSchema = new mongoose.Schema(
       required: true
     },
 
+    role: {
+      type: String,
+      enum: ['volunteer', 'coordinator', 'admin', 'member'],
+      default: 'volunteer'
+    },
+
     status: {
       type: String,
       enum: ["pending", "in-progress", "completed"],
@@ -35,6 +41,11 @@ const taskSchema = new mongoose.Schema(
 
     estimatedHours: { type: Number },
 
+    isLocked: {
+      type: Boolean,
+      default: false
+    },
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User' // Admin who assigned it
@@ -45,5 +56,3 @@ const taskSchema = new mongoose.Schema(
 
 const Task = mongoose.model("Task", taskSchema);
 export default Task;
-
-

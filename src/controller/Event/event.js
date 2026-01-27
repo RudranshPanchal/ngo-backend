@@ -274,7 +274,7 @@ export const getEventParticipants = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const event = await Event.findById(id).populate("participants", "fullName email contactNumber skills");
+        const event = await Event.findById(id).populate("participants", "fullName email contactNumber skills role");
 
         if (!event) {
             return res.status(404).json({ message: "Event not found" });

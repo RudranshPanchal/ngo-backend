@@ -32,7 +32,8 @@ export const createTask = async (req, res) => {
             priority,
             dueDate,
             estimatedHours,
-            createdBy: req.user._id
+            createdBy: req.user._id,
+            role: user.role || "volunteer",
         });
 
         try {
