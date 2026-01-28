@@ -41,6 +41,7 @@ import {
   cloudinaryImageUpload,
   cloudinaryMixedUpload,
 } from "../../utils/multer.js";
+import { sendEventRegistrationEmailController } from "../../controller/Auth/auth.js";
 
 const authRouter = express.Router();
 
@@ -139,7 +140,7 @@ authRouter.post(
   requireAdminOrVolunteer,
   createMemberByAdmin,
 );
-
+authRouter.post("/send-event-email", sendEventRegistrationEmailController);
 // Get all volunteers (Admin or Volunteer can access)
 authRouter.get("/getAllVolunteers", requireAuth, getAllVolunteers);
 

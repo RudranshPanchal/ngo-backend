@@ -311,12 +311,6 @@ export const issueIdCard = async (req, res) => {
     // 7. Footer Accent
     doc.rect(0, 200, 325, 4).fill("#4F46E5");
 
-    // Website
-    doc
-      .fillColor("#4F46E5")
-      .fontSize(8)
-      .text("www.orbosisfoundation.org", 20, 185);
-
     doc.end();
 
     const pdfBuffer = await new Promise((resolve) => {
@@ -440,7 +434,7 @@ export const downloadIdCard = async (req, res) => {
 export const issueAppointmentLetter = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, role, startDate, address } = req.body;
+    const { name, role, startDate, address } = req.body || {};
 
     let member =
       (await Member.findById(id)) || (await Member.findOne({ memberId: id }));
@@ -524,7 +518,7 @@ export const issueAppointmentLetter = async (req, res) => {
     // 5. Recipient Details
     const recipientName = name || member.fullName || "Member";
     const recipientAddress =
-      address || member.address || "Address not provided";
+      (address || member.address || "Address not provided").toString();
 
     doc.fontSize(11).font("Helvetica-Bold").text("To,", 50);
     doc.text(recipientName);
@@ -549,12 +543,16 @@ export const issueAppointmentLetter = async (req, res) => {
 
     // 8. Body Content
     let startDateStr;
-    if (startDate) {
-      startDateStr = new Date(startDate).toLocaleDateString("en-GB");
-    } else {
-      startDateStr = member.approvedAt
-        ? new Date(member.approvedAt).toLocaleDateString("en-GB")
-        : new Date().toLocaleDateString("en-GB");
+    try {
+      const dateVal = startDate || member.approvedAt || new Date();
+      const dateObj = new Date(dateVal);
+      if (isNaN(dateObj.getTime())) {
+        startDateStr = new Date().toLocaleDateString("en-GB");
+      } else {
+        startDateStr = dateObj.toLocaleDateString("en-GB");
+      }
+    } catch (e) {
+      startDateStr = new Date().toLocaleDateString("en-GB");
     }
     const recipientRole = role || "Member";
 
@@ -778,10 +776,16 @@ export const issueMembershipCertificate = async (req, res) => {
       year: "numeric",
     });
 
+    // Generate Unique Certificate Code
+    const certCode = `CERT-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`;
+
     doc.text(`Membership ID: ${member.memberId}`, centerX - 200, detailsY, {
       align: "left",
     });
     doc.text(`Issue Date: ${dateStr}`, centerX + 50, detailsY, {
+      align: "left",
+    });
+    doc.text(`Certificate No: ${certCode}`, centerX - 200, detailsY + 20, {
       align: "left",
     });
 

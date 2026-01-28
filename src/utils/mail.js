@@ -432,3 +432,34 @@ export async function sendReceiptEmail({
     ],
   });
 }
+
+export async function sendEventRegistrationEmail({
+  toEmail,
+  userName,
+  eventTitle,
+  eventDate,
+  eventTime,
+  eventLocation
+}) {
+  const from = process.env.MAIL_FROM || process.env.SMTP_USER;
+  const subject = `Event Registration Confirmed: ${eventTitle}`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; line-height: 1.6;">
+      <h2 style="color: #4A3AFF;">Hello ${userName},</h2>
+      <p>You have successfully registered for the event <strong>${eventTitle}</strong>.</p>
+      
+      <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #eee;">
+        <p style="margin: 5px 0;"><strong>📅 Date:</strong> ${new Date(eventDate).toLocaleDateString()}</p>
+        <p style="margin: 5px 0;"><strong>⏰ Time:</strong> ${eventTime}</p>
+        <p style="margin: 5px 0;"><strong>📍 Location:</strong> ${eventLocation}</p>
+      </div>
+
+      <p>We look forward to seeing you there!</p>
+      <br>
+      <p>Best regards,<br><strong>Orbosis Foundation Team</strong></p>
+    </div>
+  `;
+
+  await transporter.sendMail({ from, to: toEmail, subject, html });
+}
