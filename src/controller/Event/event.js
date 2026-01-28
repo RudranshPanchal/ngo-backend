@@ -193,10 +193,16 @@ export const registerForEvent = async (req, res) => {
         if (!event.participants) {
             event.participants = [];
         }
+        if (!event.applicants) {
+            event.applicants = [];
+        }
 
-        // Check if already registered
+        // Check if already registered or applied
         if (event.participants.some(p => p.toString() === userId.toString())) {
             return res.status(400).json({ message: "You are already registered for this event" });
+        }
+        if (event.applicants.some(a => a.toString() === userId.toString())) {
+            return res.status(400).json({ message: "You have already applied for this event" });
         }
 
         // Check deadline
@@ -204,23 +210,14 @@ export const registerForEvent = async (req, res) => {
             return res.status(400).json({ message: "Registration deadline has passed" });
         }
 
-        // Check capacity
-        if (event.maxParticipants && event.participants.length >= event.maxParticipants) {
-            return res.status(400).json({ message: "Event is fully booked" });
-        }
-
-        event.participants.push(userId);
-
-        // Update currentParticipants if it exists in schema
-        if (event.currentParticipants !== undefined) {
-            event.currentParticipants = event.participants.length;
-        }
+        // Add to applicants instead of participants
+        event.applicants.push(userId);
 
         await event.save();
 
         res.status(200).json({
             success: true,
-            message: "Successfully registered for event",
+            message: "Successfully applied for event. Pending approval.",
             data: event
         });
     } catch (err) {
@@ -244,14 +241,20 @@ export const unregisterFromEvent = async (req, res) => {
         if (!event.participants) {
             event.participants = [];
         }
-
-        // Check if registered
-        const index = event.participants.findIndex(p => p.toString() === userId.toString());
-        if (index === -1) {
-            return res.status(400).json({ message: "You are not registered for this event" });
+        if (!event.applicants) {
+            event.applicants = [];
         }
 
-        event.participants.splice(index, 1);
+        // Check if registered or applied
+        const partIndex = event.participants.findIndex(p => p.toString() === userId.toString());
+        const appIndex = event.applicants.findIndex(a => a.toString() === userId.toString());
+
+        if (partIndex === -1 && appIndex === -1) {
+            return res.status(400).json({ message: "You are not registered or applied for this event" });
+        }
+
+        if (partIndex !== -1) event.participants.splice(partIndex, 1);
+        if (appIndex !== -1) event.applicants.splice(appIndex, 1);
 
         if (event.currentParticipants !== undefined) {
             event.currentParticipants = event.participants.length;
@@ -261,7 +264,7 @@ export const unregisterFromEvent = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: "Successfully unregistered from event",
+            message: "Successfully withdrawn from event",
             data: event
         });
     } catch (err) {
@@ -290,6 +293,26 @@ export const getEventParticipants = async (req, res) => {
     }
 };
 
+export const getEventApplicants = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const event = await Event.findById(id).populate("applicants", "fullName email contactNumber skills role");
+
+        if (!event) {
+            return res.status(404).json({ message: "Event not found" });
+        }
+
+        res.status(200).json({
+            success: true,
+            count: (event.applicants || []).length,
+            data: event.applicants || []
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Failed to fetch applicants", error: error.message });
+    }
+};
+
 export const getEventById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -305,5 +328,29 @@ export const getEventById = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ message: "Failed to fetch event details", error: error.message });
+    }
+};
+
+export const rejectApplicant = async (req, res) => {
+    try {
+        const { id } = req.params; // Event ID
+        const { userId } = req.body; // Applicant ID
+
+        const event = await Event.findById(id);
+        if (!event) {
+            return res.status(404).json({ message: "Event not found" });
+        }
+
+        if (event.applicants) {
+            event.applicants.pull(userId);
+            await event.save();
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Applicant rejected successfully"
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Failed to reject applicant", error: error.message });
     }
 };
