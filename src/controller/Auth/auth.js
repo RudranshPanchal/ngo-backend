@@ -6,7 +6,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { getLocalFileUrl } from "../../utils/multer.js";
 import { uploadToCloudinary } from "../../utils/uploader.js";
-import { sendVolunteerWelcomeEmail, sendMemberWelcomeEmail, sendPasswordResetOtpEmail, sendContactUsEmail, } from "../../utils/mail.js";
+import { sendVolunteerWelcomeEmail, sendMemberWelcomeEmail, sendPasswordResetOtpEmail, sendContactUsEmail, sendEventRegistrationEmail } from "../../utils/mail.js";
 import Donation from "../../model/Donation/donation.js";
 import { sendSignupOtpEmail } from "../../utils/mail.js";
 import SignupOtp from "../../model/SignupOtp/SignupOtp.js";
@@ -1246,3 +1246,27 @@ export const verifyPhoneVerificationOTP = async (req, res) => {
         return res.status(500).json({ message: err.message })
     }
 }
+
+export const sendEventRegistrationEmailController = async (req, res) => {
+    try {
+        const { email, userName, eventTitle, eventDate, eventTime, eventLocation } = req.body;
+
+        if (!email || !eventTitle) {
+            return res.status(400).json({ message: "Email and Event Title are required" });
+        }
+
+        await sendEventRegistrationEmail({
+            toEmail: email,
+            userName,
+            eventTitle,
+            eventDate,
+            eventTime,
+            eventLocation
+        });
+
+        return res.status(200).json({ message: "Event confirmation email sent successfully" });
+    } catch (err) {
+        console.error("Event Email Error:", err);
+        return res.status(500).json({ message: "Failed to send event email" });
+    }
+};
