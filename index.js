@@ -258,9 +258,9 @@ import fundRaisingrout from "./src/routes/fundRaisingrout/fundRaisingrout.js";
 import auditReportRoutes from "./src/routes/AuditReport/report.routes.js";
 import auditPdfRoutes from "./src/routes/AuditReport/pdf.routes.js";
 import eventRouter from "./src/routes/Event/event.js";
-import { log } from "console";
 import notificationRouter from "./src/routes/Notification/notification.js";
 import taskRouter from "./src/routes/Task/task.js";
+import eventCertificateRoute from "./src/routes/EventCertificate/eventCertificate.js";
 import fundraiserRoutes from "./src/routes/Fundraiser/fundraiser.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -410,8 +410,6 @@ app.post("/test-register", async (req, res) => {
   }
 });
 
-app.use("/api/auth", authRouter);
-app.use("/api/gallery", galleryRouter);
 // Test donation endpoint
 app.post("/test-donation", async (req, res) => {
   try {
@@ -439,15 +437,6 @@ app.get("/data", async (req, res) => {
   });
 });
 
-// Events
-app.use("/api/event", eventRouter);
-app.use("/api/notification", notificationRouter);
-app.use("/api/task", taskRouter);
-
-// Audit Report
-app.use("/api/report", auditReportRoutes);
-app.use("/api/report", auditPdfRoutes);
-
 // Check donations endpoint
 app.get("/check-donations", async (req, res) => {
   try {
@@ -470,14 +459,44 @@ app.get("/check-donations", async (req, res) => {
   }
 });
 
+
+// ROUTES
+
+// Auth
+app.use("/api/auth", authRouter);
+
+// Gallery
+app.use("/api/gallery", galleryRouter);
+
+// Events
+app.use("/api/event", eventRouter);
+app.use("/api/notification", notificationRouter);
+
+// Tasks
+app.use("/api/task", taskRouter);
+
+// Donor & Donations
+app.use("/api/donor", donorRouter);
 app.use("/api/donation", donationRouter);
+
+// Volunteer 
 app.use("/api/volunteer", volunteerRouter);
 app.use("/api/beneficiary", beneficiaryRouter);
+
+// Members
 app.use("/api/member", memberRouter);
+
+// Certificates
 app.use("/api/certificate", certificateRouter);
-app.use("/api/donor", donorRouter);
-// fundraising
+app.use("/api/event-certificate", eventCertificateRoute);
+
+// Fundraising
 app.use("/api/fundraising", fundRaisingrout);
+
+// Audit Report
+app.use("/api/report", auditReportRoutes);
+app.use("/api/report", auditPdfRoutes);
+
 
 // Global error handling middleware
 app.use((err, req, res, next) => {

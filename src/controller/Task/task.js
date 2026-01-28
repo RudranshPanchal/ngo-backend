@@ -24,6 +24,23 @@ export const createTask = async (req, res) => {
             return res.status(404).json({ message: "Volunteer not found" });
         }
 
+        // Move user from applicants to participants if applicable
+        if (!event.participants) event.participants = [];
+        if (!event.applicants) event.applicants = [];
+
+        const wasApplicant = event.applicants.includes(assignedTo);
+        const isParticipant = event.participants.includes(assignedTo);
+
+        if (wasApplicant || !isParticipant) {
+            if (wasApplicant) event.applicants.pull(assignedTo);
+            event.participants.addToSet(assignedTo);
+
+            if (event.currentParticipants !== undefined) {
+                event.currentParticipants = event.participants.length;
+            }
+            await event.save();
+        }
+
         const task = await Task.create({
             title,
             description,
@@ -32,7 +49,8 @@ export const createTask = async (req, res) => {
             priority,
             dueDate,
             estimatedHours,
-            createdBy: req.user._id
+            createdBy: req.user._id,
+            role: user.role || "volunteer",
         });
 
         try {
