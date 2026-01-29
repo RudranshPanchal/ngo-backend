@@ -9,6 +9,10 @@ const volunteerSchema = new mongoose.Schema({
         type: String, required: true, unique: true, lowercase: true,
         trim: true
     },
+    profilePhoto: {
+        type: String,
+        default: null,
+    },
     userRef: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",

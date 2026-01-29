@@ -19,16 +19,21 @@ import EventCertificate from "../../model/EventCertificate/eventCertificate.js";
 
 export const registerVolunteer = async (req, res) => {
   try {
+    const files = req.files || {};
     let uploadIdProof = null;
-    if (req.file) {
-      // req.body.uploadIdProof = getLocalFileUrl(req.file);
+    if (files.uploadIdProof && files.uploadIdProof[0]) {
       // Upload to Cloudinary
-      uploadIdProof = await uploadToCloudinary(req.file, "volunteer-id-proofs");
+      uploadIdProof = await uploadToCloudinary(files.uploadIdProof[0], "volunteer-id-proofs");
       console.log("Uploaded ID Proof URL:", uploadIdProof);
 
       if (!uploadIdProof) {
         throw new Error("Cloudinary upload failed: No URL returned");
       }
+    }
+
+    let profilePhoto = null;
+    if (files.profilePhoto && files.profilePhoto[0]) {
+      profilePhoto = await uploadToCloudinary(files.profilePhoto[0], "volunteer-profile-photos");
     }
 
     const volunteerId = `VOL-${new mongoose.Types.ObjectId().toHexString().slice(-6).toUpperCase()}`;
@@ -46,6 +51,7 @@ export const registerVolunteer = async (req, res) => {
       ...req.body,
       volunteerId,
       uploadIdProof: uploadIdProof,
+      profilePhoto: profilePhoto,
       isEmailVerified: req.body.isEmailVerified === 'true' || req.body.isEmailVerified === true,
       isPhoneVerified: req.body.isPhoneVerified === 'true' || req.body.isPhoneVerified === true,
     };
@@ -872,6 +878,7 @@ export const updateVolunteerStatus = async (req, res) => {
 
       user.profession = volunteer.profession || "";
       user.uploadIdProof = volunteer.uploadIdProof || "";
+      user.profilePhoto = volunteer.profilePhoto || "";
 
       // SYSTEM PASSWORD
       user.password = hashedPassword;
@@ -897,6 +904,7 @@ export const updateVolunteerStatus = async (req, res) => {
         email: volunteer.email,
         password: hashedPassword,
         role: "volunteer",
+        profilePhoto: volunteer.profilePhoto || "",
         memberId,
 
         volunteerRef: volunteer._id,

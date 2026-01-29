@@ -6,7 +6,10 @@ import { requireAuth, requireVolunteer, requireAdmin, requireAdminOrVolunteer } 
 const router = express.Router();
 
 // Accept multipart/form-data with an optional file field named 'uploadIdProof'
-router.post("/register", upload.single('uploadIdProof'), registerVolunteer);
+router.post("/register", upload.fields([
+    { name: 'uploadIdProof', maxCount: 1 },
+    { name: 'profilePhoto', maxCount: 1 }
+]), registerVolunteer);
 router.get("/all", requireAuth, requireAdmin, getAllVolunteers,);
 router.get("/leaderboard", getLeaderboard);
 router.get("/stats", requireAuth, requireVolunteer, getVolunteerStats);
