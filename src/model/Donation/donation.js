@@ -15,10 +15,17 @@ const donationSchema = new mongoose.Schema({
     
     modeofDonation: {
         type: String,
-        enum: ["bankTransfer", "upi", "cash", "cheque"],
+        enum: ["bankTransfer", "upi", "cash", "cheque", "card", "netbanking"],
         default: "bankTransfer"
     },
-    
+    address: { 
+        type: String, 
+        default: "N/A" 
+    },
+    purposeOfDonation: { 
+        type: String, 
+        default: "General Donation" 
+    },
     // Razorpay payment details
     razorpayPaymentId: {
         type: String,
@@ -29,10 +36,6 @@ const donationSchema = new mongoose.Schema({
         type: String,
         required: false
     },
-    fundraisingId: { 
-  type: mongoose.Schema.Types.ObjectId,
-  required: false
-},
     razorpaySignature: {
         type: String,
         required: false
@@ -60,8 +63,6 @@ const donationSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    receiptUrl: { type: String, default: "" },
-    
     donorPhone: {
         type: String,
         required: true
