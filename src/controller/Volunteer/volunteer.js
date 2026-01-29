@@ -13,6 +13,7 @@ import EventApplication from "../../model/Event/eventApplication.js";
 import { calculateVolunteerLevel } from "../../utils/volunteerLevel.js";
 import Notification from "../../model/Notification/notification.js";
 import { getVolunteerStatsService } from "../../services/volunteerStats.js";
+import EventCertificate from "../../model/EventCertificate/eventCertificate.js";
 
 // controller/Volunteer/volunteer.js
 
@@ -294,11 +295,8 @@ export const getAllVolunteers = async (req, res) => {
 //   }
 // };
 
-
 // for Volunteers 
 export const getVolunteerStats = async (req, res) => {
-  console.log("VOLUNTEER STATS CONTROLLER HIT");
-
   try {
     const userId = req.user._id;
 
@@ -399,7 +397,33 @@ export const getVolunteerTasksById = async (req, res) => {
   }
 };
 
-// 🛠️ DEBUG: Seed Data for Stats
+export const getMyCertificates = async (req, res) => {
+  try {
+    const userId = req.user._id; 
+
+    const certificates = await EventCertificate.find({ 
+      recipient: userId,
+      // role: 'volunteer'
+    })
+    .populate("event", "title eventDate category")
+    .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: certificates.length,
+      certificates
+    });
+  } catch (error) {
+    console.error("Error fetching certificates:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error: Unable to fetch certificates"
+    });
+  }
+};
+
+
+//  DEBUG: Seed Data for Stats
 // export const seedVolunteerStatsData = async (req, res) => {
 //   try {
 //     const userId = req.user._id;
@@ -607,7 +631,7 @@ export const getVolunteerById = async (req, res) => {
 //       });
 //     }
 
-//     // 🔗 back-link volunteer → user (RECOMMENDED)
+//     //  back-link volunteer → user (RECOMMENDED)
 //     volunteer.userRef = user._id;
 //     await volunteer.save();
 
@@ -818,9 +842,7 @@ export const updateVolunteerStatus = async (req, res) => {
       return res.json({ success: true, volunteer });
     }
 
-    // ---------------------------------
-    // 🔐 AUTO-GENERATED TEMP PASSWORD
-    // ---------------------------------
+    //  AUTO-GENERATED TEMP PASSWORD
     const tempPassword = generateTempPassword(volunteer.fullName, volunteer.dob);
     console.log(tempPassword);
 
@@ -829,9 +851,7 @@ export const updateVolunteerStatus = async (req, res) => {
     // Identity check ALWAYS by email
     let user = await User.findOne({ email: volunteer.email });
 
-    // -----------------------------
     // CASE 1: USER ALREADY EXISTS
-    // -----------------------------
     if (user) {
       user.role = "volunteer";
       user.volunteerRef = volunteer._id;
@@ -853,7 +873,7 @@ export const updateVolunteerStatus = async (req, res) => {
       user.profession = volunteer.profession || "";
       user.uploadIdProof = volunteer.uploadIdProof || "";
 
-      // 🔥 SYSTEM PASSWORD
+      // SYSTEM PASSWORD
       user.password = hashedPassword;
       user.tempPassword = true;
 
@@ -863,9 +883,7 @@ export const updateVolunteerStatus = async (req, res) => {
       await user.save();
     }
 
-    // -----------------------------
     // CASE 2: USER DOES NOT EXIST
-    // -----------------------------
     else {
       const cleanName = (volunteer.fullName || "member")
         .toLowerCase()
@@ -912,7 +930,7 @@ export const updateVolunteerStatus = async (req, res) => {
       });
     }
 
-    // 🔗 back-link volunteer → user
+    // back-link volunteer → user
     volunteer.userRef = user._id;
     await volunteer.save();
 
