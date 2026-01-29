@@ -1,5 +1,6 @@
 export const NGO_80G = {
-  name: "ORBOSIS FOUNDATION",
+  name: "ORBOSIS GLOBAL FOUNDATION",
+  ngoLogo: "https://res.cloudinary.com/dq5ot5lup/image/upload/v1769670179/fundraising/wuh1eyicb9rnjot2ppe9.png",
   address: "M50, Janta Quater, Near Pink Flower School, Nanda Nagar, Indore, Madhya Pradesh – 452011, India",
   pan: "AABTO1234F",
   registration80G: "AAATO1234F/80G/2023",

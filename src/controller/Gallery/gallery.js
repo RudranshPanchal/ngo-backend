@@ -6,10 +6,8 @@ export const createGallery = async (req, res) => {
         const { youtubeVideo } = req.body;
         const files = req.files;
         const {imageCaption} = req.body
-        // Convert youtubeVideo to array if it's a single string
         const youtubeVideos = Array.isArray(youtubeVideo) ? youtubeVideo : [youtubeVideo];
 
-        // Upload images to Cloudinary
         const galleryImages = [];
         for (const file of files) {
             try {
@@ -27,7 +25,6 @@ export const createGallery = async (req, res) => {
             }
         }
 
-        // Create gallery entry
         const gallery = new Gallery({
             galleryImages,
             youtubeVideo: youtubeVideos,
@@ -55,7 +52,6 @@ export const createGallery = async (req, res) => {
 
 export const getAllGallery = async (req, res) => {
     try {
-        // Get all galleries and populate createdBy field
         const galleries = await Gallery.find()
             .populate('createdBy', 'name email role')
             .sort({ createdAt: -1 });

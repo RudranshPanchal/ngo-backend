@@ -25,30 +25,25 @@ export const getallFund = async (req, resp) => {
 
 }
 
-// Create Fund
 export const createFund = async (req, resp) => {
   try {
     const { name, city, payment, description, tags, limit } = req.body;
 
-    // 1. Check if image exists
     if (!req.file) {
       return resp.status(400).json({ success: false, message: "Image is required" });
     }
 
-    // 2. Upload to Cloudinary
     const imageUrl = await uploadToCloudinary(req.file, "fundraising");
 
-    // 3. Validation
     if (!name || !city || !payment || !description || !tags || !limit) {
       return resp.status(400).json({ success: false, message: "All fields are required" });
     }
 
-    // 4. Safe Tags Parsing
     let finalTags = [];
     try {
       finalTags = typeof tags === 'string' ? JSON.parse(tags) : tags;
     } catch (e) {
-      finalTags = tags; // Fallback agar parse fail ho
+      finalTags = tags; 
     }
 
     const fund = await fundraising.create({
@@ -72,21 +67,18 @@ export const createFund = async (req, resp) => {
   }
 };
 
-// Update Fund
 export const updateFund = async (req, resp) => {
   try {
     const fund = await fundraising.findById(req.params.id);
     if (!fund) return resp.status(404).json({ success: false, message: "Fund not found" });
 
-    let imageUrl = fund.image; // Default purana URL
+    let imageUrl = fund.image; 
 
-    // 1. AGAR NAYI FILE HAI TOH HI UPLOAD KARO
     if (req.file) {
       const uploadedUrl = await uploadToCloudinary(req.file, "fundraising");
       if (uploadedUrl) imageUrl = uploadedUrl;
     }
 
-    // 2. Safe Tags Parsing (Crash hone se bachane ke liye)
     let finalTags = fund.tags;
     if (req.body.tags) {
       try {
@@ -97,7 +89,6 @@ export const updateFund = async (req, resp) => {
       }
     }
 
-    // 3. Update Database
     const updatedFund = await fundraising.findByIdAndUpdate(
       req.params.id,
       {
@@ -118,7 +109,6 @@ export const updateFund = async (req, resp) => {
     return resp.status(500).json({ success: false, message: "Server error" });
   }
 };
-// Delete Fund
 export const deleteFund = async (req, resp) => {
   try {
     const fund = await fundraising.findById(req.params.id);

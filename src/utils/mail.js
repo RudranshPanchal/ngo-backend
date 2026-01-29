@@ -214,12 +214,21 @@ export async function sendContactUsEmail({
 
 export async function sendEmail(to, subject, text) {
   const from = process.env.MAIL_FROM || process.env.SMTP_USER;
-  await transporter.sendMail({
-    from,
-    to,
-    subject,
-    text,
-  });
+  
+  // Support passing an object as the first argument (for HTML emails)
+  if (typeof to === 'object' && to !== null) {
+    await transporter.sendMail({
+      from,
+      ...to
+    });
+  } else {
+    await transporter.sendMail({
+      from,
+      to,
+      subject,
+      text,
+    });
+  }
 }
 
 export async function forSubscribe({ email }) {

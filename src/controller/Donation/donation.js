@@ -122,7 +122,6 @@ export const registerDonor = async (req, res) => {
 export const createDonationOrder = async (req, res) => {
   try {
     console.log(" Incoming Donation Body:", req.body);
-
     const {
       amount,
       modeofDonation,
@@ -132,9 +131,12 @@ export const createDonationOrder = async (req, res) => {
       panNumber,
       address,
       fundraisingId,
-      fromRegistration
-    } = req.body;
+      fromRegistration,
+      purposeOfDonation
 
+    } = req.body;
+console.log("Saving Address:", address || "N/A");
+console.log("Saving Purpose:", purposeOfDonation || "General Donation");
     const userId = req.user?._id || null;
 
     if (!razorpay) return res.status(500).json({ message: "Payment gateway missing" });
@@ -183,8 +185,9 @@ export const createDonationOrder = async (req, res) => {
       donorEmail,
       donorPhone,
       panNumber,
-      address,
+      address: address || "N/A",
       fundraisingId,
+      purposeOfDonation: purposeOfDonation || "General Donation",
       receiptNo: customReceiptId,
       is80GEligible: true   // 👈 online payment = always eligible
     });
@@ -251,14 +254,16 @@ const receiptData = {
   ngoName: NGO_80G.name,
   ngoAddress: NGO_80G.address,
   ngoPan: NGO_80G.pan,
-  section80GNumber: NGO_80G.registration80G,
+  ngoLogo: NGO_80G.ngoLogo || NGO_80G.logo,
+  registration80G: NGO_80G.registration80G,
   validity: NGO_80G.validity,
 
   // DONOR DETAILS
   donorName: donation.donorName,
   donorEmail: donation.donorEmail,
   donorPan: finalPan,
-
+  donorAddress: donation.address || "N/A",
+  donationPurpose: donation.purposeOfDonation || "N/A",
   // DONATION DETAILS
   amount: donation.amount,
   amountInWords: numberToWords(donation.amount),
