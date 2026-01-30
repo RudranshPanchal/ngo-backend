@@ -14,14 +14,14 @@ router.get("/all", requireAuth, requireAdmin, getAllVolunteers,);
 router.get("/leaderboard", getLeaderboard);
 router.get("/stats", requireAuth, requireVolunteer, getVolunteerStats);
 router.get("/certificates/:volunteerId", requireAuth, requireVolunteer, getMyCertificates);
+
 // admin routes
 router.get("/:id/stats", requireAuth, requireAdmin, getVolunteerStatsById);
 router.get("/:id/tasks/", requireAuth, requireAdmin, getVolunteerTasksById);
-// router.post("/seed-stats", requireAuth, seedVolunteerStatsData); // 🛠️ New Debug Route
+
+// router.post("/seed-stats", requireAuth, seedVolunteerStatsData); // New Debug Route
+
 router.get("/:id", getVolunteerById);
 router.put("/status/:id", requireAuth, requireAdminOrVolunteer, updateVolunteerStatus);
-
-
-
 
 export default router;

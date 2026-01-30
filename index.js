@@ -271,7 +271,7 @@ const app = express();
 const server = createServer(app);
 
 const allowedOrigins = [
-  "https://ngo-frontend-44nf.onrender.com", // ✅ Render frontend
+  "https://ngo-frontend-44nf.onrender.com",
   "https://orbosis-ngo-frontend-hazel.vercel.app",
   "http://localhost:5173",
   "http://localhost:5174",
@@ -460,7 +460,7 @@ app.get("/check-donations", async (req, res) => {
 });
 
 
-// ROUTES
+//----------- ROUTES ------------//
 
 // Auth
 app.use("/api/auth", authRouter);
@@ -470,10 +470,12 @@ app.use("/api/gallery", galleryRouter);
 
 // Events
 app.use("/api/event", eventRouter);
-app.use("/api/notification", notificationRouter);
 
 // Tasks
 app.use("/api/task", taskRouter);
+
+// Notifications
+app.use("/api/notification", notificationRouter);
 
 // Donor & Donations
 app.use("/api/donor", donorRouter);
@@ -530,25 +532,25 @@ app.use((req, res) => {
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  // ✅ DONOR ROOM (already hai)
+  // DONOR ROOM 
   socket.on("join-donor-room", (userId) => {
     socket.join(`donor-${userId}`);
     console.log(`User ${userId} joined donor room`);
   });
 
-  // ✅ USER ROOM (For Members/Volunteers)
+  // USER ROOM (For Members/Volunteers)
   socket.on("join-user-room", (userId) => {
     socket.join(`user-${userId}`);
     console.log(`User ${userId} joined user room`);
   });
 
-  // ✅ ADMIN ROOM (NEW – YAHI ADD KARNA THA)
+  // ADMIN ROOM 
   socket.on("join-admin-room", () => {
     socket.join("admins");
     console.log("Admin joined admin room");
   });
 
-  // ✅ VOLUNTEER ROOM
+  // VOLUNTEER ROOM
   socket.on("join-volunteer-room", (userId) => {
     socket.join(`volunteer-${userId}`);
     console.log(`Volunteer ${userId} joined room: volunteer-${userId}`);

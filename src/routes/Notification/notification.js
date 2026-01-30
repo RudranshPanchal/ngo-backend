@@ -11,20 +11,20 @@ import { requireAuth, requireAdmin, requireVolunteer } from "../../middleware/au
 
 const router = express.Router();
 
-// ✅ TEST ROUTE (temporary)
+// TEST ROUTE (temporary)
 router.get("/test", (req, res) => {
   res.json({ ok: true });
 });
 
-// ✅ ADMIN NOTIFICATIONS
+// ADMIN NOTIFICATIONS
 router.get("/admin", getAdminNotifications);
 router.put("/admin/read", requireAuth, requireAdmin, markAllAsRead);
 
-// ✅ MEMBER NOTIFICATIONS
+// MEMBER NOTIFICATIONS
 router.get("/member", requireAuth, getMemberNotifications);
 router.put("/:id/read", requireAuth, markNotificationAsRead);
 
-// ✅ VOLUNTEER ROUTES
+// VOLUNTEER ROUTES
 router.get("/volunteer", requireAuth, requireVolunteer, getVolunteerNotifications);
 router.put("/volunteer/read", requireAuth, requireVolunteer, markVolunteerNotificationsAsRead);
 
