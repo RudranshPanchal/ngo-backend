@@ -14,6 +14,7 @@ import { numberToWords } from "../../utils/numberToWords.js";
 import Counter from "../../model/Counter/counter.js";
 import { uploadToCloudinary } from "../../utils/uploader.js";
 import Notification from "../../model/Notification/notification.js";
+import Fundraiser from "../../model/Fundraiser/fundraiser.js";
 
 
 dotenv.config();
@@ -35,7 +36,6 @@ if (keyId && keySecret) {
 
 export const registerDonor = async (req, res) => {
   try {
-    // 1. req.body se saare zaroori fields nikaalein (Destructuring)
     const { 
       fullName, 
       organisationName, 
@@ -50,7 +50,6 @@ export const registerDonor = async (req, res) => {
       isEmailVerified: rawEmailVerified
     } = req.body;
 
-    // 2. userId ko req.user se nikaalein (Middleware se aata hai)
     const userId = req.user?._id || null;
 
     const safeFundId = fundraisingId && fundraisingId !== "" ? fundraisingId : null;
@@ -58,9 +57,8 @@ export const registerDonor = async (req, res) => {
     const isPhoneVerified = String(rawPhoneVerified).toLowerCase() === "true";
     const isEmailVerified = String(rawEmailVerified).toLowerCase() === "true";
 
-    console.log("📝 FINAL FLAGS =>", { isPhoneVerified, isEmailVerified, userId });
+    console.log("FINAL FLAGS =>", { isPhoneVerified, isEmailVerified, userId });
 
-    // 3. Donation Registration record create karein
     const donorEntry = await DonationReg.create({
       userId: userId,
       name: fullName,
@@ -78,19 +76,17 @@ export const registerDonor = async (req, res) => {
       uploadPaymentProof: req.file ? req.file.path : "",
     });
 
-    // 4. User Profile update karein (Agar user logged in hai)
     if (userId) {
       await User.findByIdAndUpdate(userId, {
         $set: { 
-          panNumber: panNumber, // User model mein PAN update
-          address: address,     // User model mein Address update
-          contactNumber: contactNumber // User model mein Phone update
+          panNumber: panNumber, 
+          address: address,     
+          contactNumber: contactNumber 
         }
       });
-      console.log("✅ User profile updated with PAN, Address and Phone");
+      console.log(" User profile updated with PAN, Address and Phone");
     }
 
-    // 🔔 SAVE & SEND NOTIFICATION (Database + Real-time)
     const newNotification = await Notification.create({
         userType: "admin",
         message: `New donor registration from ${fullName} for ₹${donationAmount}.`,
@@ -102,7 +98,7 @@ export const registerDonor = async (req, res) => {
     const io = req.app.get("io");
     if (io) {
         io.to("admins").emit("admin-notification", newNotification);
-        console.log('🔔 Admin notification sent for new donor registration.');
+        console.log(' Admin notification sent for new donor registration.');
     }
 
     return res.json({
@@ -111,7 +107,7 @@ export const registerDonor = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Register Donor Error:", error.message);
+    console.error("Register Donor Error:", error.message);
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -143,9 +139,7 @@ console.log("Saving Purpose:", purposeOfDonation || "General Donation");
     if (!amount || !modeofDonation) return res.status(400).json({ message: "Amount & payment mode required" });
     if (amount < 1) return res.status(400).json({ message: "Amount must be ≥ 1" });
 
-    // ================================
-    // ✅ ONLY ONLINE PAYMENT ALLOWED
-    // ================================
+    //  ONLY ONLINE PAYMENT ALLOWED
     const allowedModes = ["upi", "card", "netbanking"];
     if (!allowedModes.includes(modeofDonation)) {
       return res.status(400).json({
@@ -153,9 +147,7 @@ console.log("Saving Purpose:", purposeOfDonation || "General Donation");
       });
     }
 
-    // =================================================
-    // 🔥 SAFE RECEIPT NUMBER USING COUNTER (NO DUPLICATE)
-    // =================================================
+    //  SAFE RECEIPT NUMBER USING COUNTER (NO DUPLICATE)
     const counter = await Counter.findOneAndUpdate(
       { name: "donationReceipt" },
       { $inc: { seq: 1 } },
@@ -163,7 +155,6 @@ console.log("Saving Purpose:", purposeOfDonation || "General Donation");
     );
 
     const customReceiptId = `pay_orbosis${String(counter.seq).padStart(6, "0")}`;
-    // =================================================
 
     // ONLINE DONATION (RAZORPAY)
     const options = {
@@ -189,7 +180,7 @@ console.log("Saving Purpose:", purposeOfDonation || "General Donation");
       fundraisingId,
       purposeOfDonation: purposeOfDonation || "General Donation",
       receiptNo: customReceiptId,
-      is80GEligible: true   // 👈 online payment = always eligible
+      is80GEligible: true   
     });
 
     console.log(`🚀 Order Created: ${customReceiptId}`);
@@ -217,7 +208,6 @@ export const verifyDonationPayment = async (req, res) => {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
         const secret = process.env.RAZORPAY_KEY_SECRET || '3hv6ZUhPh9gIPTA4uX6jEDM8';
 
-        // 1. Signature Verification
         const sign = razorpay_order_id + "|" + razorpay_payment_id;
         const expectedSignature = crypto
             .createHmac("sha256", secret)
@@ -228,25 +218,20 @@ export const verifyDonationPayment = async (req, res) => {
             return res.status(400).json({ message: "Payment verification failed" });
         }
 
-        // 2. Donation Record dhundo
         const donation = await Donation.findOne({ razorpayOrderId: razorpay_order_id });
         if (!donation) {
             return res.status(404).json({ message: "Donation record not found" });
         }
 
-        // 3. User (Donor) ki registration details fetch karo PAN ke liye
         const donorReg = await User.findById(donation.userId);
 
-        // 4. PAN Number decide karo (Pehle check karo agar payment form se aaya hai, warna DB se)
         const finalPan = req.body.panNumber || donation.panNumber || (donorReg ? donorReg.panNumber : "N/A");
 
-        // 5. Update Donation Status in DB
         donation.razorpayPaymentId = razorpay_payment_id;
         donation.razorpaySignature = razorpay_signature;
         donation.paymentStatus = "completed";
         donation.panNumber = finalPan;
 
-        // 6. PDF Receipt Generation aur Email Logic
         try {
 
 const receiptData = {
@@ -272,7 +257,6 @@ const receiptData = {
   receiptNo: donation.receiptNo,
   date: new Date().toLocaleDateString("en-IN"),
 
-  // DECLARATION
   declaration:
     "This donation is eligible for deduction under Section 80G of the Income Tax Act, 1961.",
 
@@ -280,10 +264,8 @@ const receiptData = {
 };
 
 
-            // Buffer generate karo
             const pdfBuffer = await generatePDFBuffer(receiptData, "donation");
 
-            // Local folder mein save karo
             const fileName = `receipt-${donation._id}.pdf`;
             const directoryPath = path.join(process.cwd(), "uploads", "receipts");
 
@@ -294,11 +276,10 @@ const receiptData = {
             const filePath = path.join(directoryPath, fileName);
             fs.writeFileSync(filePath, pdfBuffer);
 
-            // DB mein URL update karo
             donation.receiptUrl = `/uploads/receipts/${fileName}`;
-            await donation.save(); // Sab save kar diya
+            await donation.save(); 
 
-            console.log("✅ Receipt Saved and DB Updated:", donation.receiptUrl);
+            console.log(" Receipt Saved and DB Updated:", donation.receiptUrl);
 
             // Email bhej do
             // await sendReceiptEmail({
@@ -310,12 +291,12 @@ const receiptData = {
             // });
 
         } catch (pdfErr) {
-            console.error("❌ PDF/Email Automation Error:", pdfErr.message);
+            console.error(" PDF/Email Automation Error:", pdfErr.message);
             // Agar PDF fail ho jaye tab bhi donation status save hona chahiye
             await donation.save();
         }
 
-        // 🔔 SAVE & SEND NOTIFICATION (Database + Real-time)
+        //  SAVE & SEND NOTIFICATION (Database + Real-time)
         if (donation.paymentStatus === "completed") {
             const newNotification = await Notification.create({
                 userType: "admin",
@@ -328,10 +309,31 @@ const receiptData = {
             const io = req.app.get("io");
             if (io) {
                 io.to("admins").emit("admin-notification", newNotification);
-                console.log('🔔 Admin notification sent for new donation.');
+                console.log('Admin notification sent for new donation.');
             }
 
-            // ✅ UPDATE MEMBER STATS IF USER IS A MEMBER
+
+//  UPDATE FUNDRAISER PROGRESS (Corrected Logic)
+if (donation.fundraisingId) {
+    try {
+        const FundraisingModel = (await import("../../model/fundraising/fundraising.js")).default;
+        const fundItem = await FundraisingModel.findById(donation.fundraisingId);
+        
+        if (fundItem) {
+            const donationAmount = Number(donation.amount);
+
+            fundItem.raisedAmount = (Number(fundItem.raisedAmount) || 0) + donationAmount;
+            fundItem.payment = (Number(fundItem.payment) || 0) + donationAmount;
+            
+            await fundItem.save();
+            console.log(` PROGRESS UPDATED: New Total is ₹${fundItem.raisedAmount}`);
+        } else {
+            console.log("Fund ID not found in database");
+        }
+    } catch (fundErr) {
+        console.error("Progress Update Failed:", fundErr.message);
+    }
+}
             if (donation.userId) {
                 try {
                     const user = await User.findById(donation.userId);
@@ -341,15 +343,14 @@ const receiptData = {
                             { memberId: user.memberId },
                             { $inc: { totalDonations: donation.amount } }
                         );
-                        console.log(`✅ Member ${user.memberId} totalDonations updated by ₹${donation.amount}`);
+                        console.log(`Member ${user.memberId} totalDonations updated by ₹${donation.amount}`);
                     }
                 } catch (memberErr) {
-                    console.error("❌ Failed to update member stats:", memberErr.message);
+                    console.error(" Failed to update member stats:", memberErr.message);
                 }
             }
         }
 
-        // 7. Success Response
         res.json({ 
             success: true, 
             message: "Payment verified and receipt processed",
@@ -361,13 +362,11 @@ const receiptData = {
         res.status(500).json({ error: error.message });
     }
 };
-// Get user donations with total amount
 export const getUserDonations = async (req, res) => {
   try {
     const userId = req.user._id; 
     const userEmail = req.user.email;
     
-    // Yahan Donation collection se data uthega
     const donations = await Donation.find({ 
       $or: [
         { userId: userId },
@@ -378,14 +377,13 @@ export const getUserDonations = async (req, res) => {
 
     return res.json({
       success: true,
-      donations: donations // Frontend is key ko map karega
+      donations: donations 
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Get real-time donor statistics
 export const getDonorStats = async (req, res) => {
     try {
         const userId = req.user._id;
@@ -399,7 +397,6 @@ export const getDonorStats = async (req, res) => {
         const totalDonated = donations.reduce((sum, d) => sum + d.amount, 0);
         const donationsCount = donations.length;
         
-        // Calculate impact metrics
         const impactScore = Math.min(100, Math.floor(totalDonated / 1000) + donationsCount * 5);
         const beneficiariesHelped = Math.floor(totalDonated / 500) + donationsCount * 2;
         
@@ -417,7 +414,6 @@ export const getDonorStats = async (req, res) => {
     }
 };
 
-// Get recent donations for real-time updates
 export const getRecentDonations = async (req, res) => {
     try {
         const userId = req.user._id;
@@ -441,7 +437,6 @@ export const getRecentDonations = async (req, res) => {
     }
 };
 
-// Emit real-time updates when donation status changes
 export const emitDonorUpdate = (io, userId, updateType, data) => {
     io.to(`donor-${userId}`).emit('donor-update', {
         type: updateType,
@@ -449,9 +444,7 @@ export const emitDonorUpdate = (io, userId, updateType, data) => {
         timestamp: new Date()
     });
 };
-// ===============================
 // ADMIN : GET ALL DONATIONS
-// ===============================
 export const getAllDonationsForAdmin = async (req, res) => {
   try {
     const donations = await Donation.find()
@@ -476,19 +469,16 @@ export const getAllDonationsForAdmin = async (req, res) => {
   }
 };
 
-// ===============================
 // ADMIN : GET ACTIVE DONORS (FROM USER COLLECTION)
-// ===============================
 export const getActiveDonorsFromUserCollection = async (req, res) => {
   try {
     const donors = await User.find({ role: "donor" }).sort({ createdAt: -1 });
 
-    // Map to match the structure expected by the frontend table
     const formattedDonors = donors.map(user => ({
       _id: user._id,
       donorName: user.fullName,
       donorEmail: user.email,
-      amount: 0, // Placeholder for user list
+      amount: 0, 
       modeofDonation: "Registered",
       paymentStatus: "Active",
       receiptUrl: null,
@@ -501,14 +491,12 @@ export const getActiveDonorsFromUserCollection = async (req, res) => {
   }
 };
 
-// ===============================
 // ADMIN : GET SINGLE DONOR DETAILS (BY USER ID OR DONATION ID)
-// ===============================
 export const getDonorById = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // 1. Try finding in User collection (Active Donor)
+
     let donor = await User.findById(id).lean();
     let totalDonationAmount = 0;
 
@@ -516,7 +504,6 @@ export const getDonorById = async (req, res) => {
       const donations = await Donation.find({ userId: donor._id, paymentStatus: 'completed' });
       totalDonationAmount = donations.reduce((sum, d) => sum + (d.amount || 0), 0);
     } else {
-      // 2. If not found, try finding in Donation collection (Transaction)
       const donation = await Donation.findById(id);
       if (donation) {
         if (donation.userId) {
@@ -528,7 +515,6 @@ export const getDonorById = async (req, res) => {
         } 
         
         if (!donor) {
-          // Fallback for guest donations (construct a temporary donor object)
           const donations = await Donation.find({ donorEmail: donation.donorEmail, paymentStatus: 'completed' });
           totalDonationAmount = donations.reduce((sum, d) => sum + (d.amount || 0), 0);
 
@@ -573,7 +559,6 @@ export const updateDonorProfile = async (req, res) => {
     if (contactNumber) updateData.contactNumber = contactNumber;
     if (organisationName) updateData.organisationName = organisationName;
 
-    // 1. Pehle MAIN USER (Auth) collection update karein (Ye signup data update karega)
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { $set: updateData },
@@ -581,18 +566,17 @@ export const updateDonorProfile = async (req, res) => {
     );
 
     if (!updatedUser) {
-      console.log("❌ User not found in Auth collection");
+      console.log(" User not found in Auth collection");
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // 2. Phir DonationReg update karein (Agar user ne kabhi registration form bhara ho toh)
     await DonationReg.findOneAndUpdate(
       { userId: userId },
       { $set: updateData },
       { new: true }
     );
 
-    console.log("✅ User Collection and DonationReg Synced Successfully");
+    console.log(" User Collection and DonationReg Synced Successfully");
 
     res.json({ 
       success: true, 
@@ -600,7 +584,7 @@ export const updateDonorProfile = async (req, res) => {
       data: updatedUser 
     });
   } catch (err) {
-    console.error("❌ Update Error:", err.message);
+    console.error("Update Error:", err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 };
