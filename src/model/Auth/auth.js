@@ -100,6 +100,10 @@ const userSchema = new mongoose.Schema(
       type: String,
     },
 
+    profilePhoto: {
+      type: String,
+    },
+
     skills: [
       {
         type: String,
