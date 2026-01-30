@@ -1,4 +1,4 @@
-<!-- <!DOCTYPE html>
+<!-- <!-- <!DOCTYPE html>
 <html>
 <head>
     <style>
@@ -234,7 +234,7 @@
     </div>
 </div>
 </body>
-</html> -->
+</html> 
 <!DOCTYPE html>
 <html>
 <head>
@@ -309,9 +309,16 @@
 </head>
 <body>
 <div class="receipt-box">
-    <div class="watermark">{{ngoName}}</div>
+    <div class="watermark"> <img 
+      src="{{ngoLogo}}" 
+      alt="NGO Logo"
+      style="width: 300px; opacity: 0.15;"
+    /></div>
 
     <div class="header">
+        <image src="./signatures/orbosis.png", centerX - logoWidth / 2, 40, 
+      width: logoWidth,
+      height: logoHeight,></image>
         <div style="width: 65%;">
             <h1 class="ngo-name">{{ngoName}}</h1>
             <p class="ngo-address">{{ngoAddress}}</p>
@@ -334,8 +341,11 @@
         <tr><td class="label">Transaction ID:</td><td class="value">{{transactionId}}</td></tr>
         <tr><td class="label">Date of Donation:</td><td class="value">{{date}}</td></tr>
         <tr><td class="label">Donor Name:</td><td class="value">{{donorName}}</td></tr>
+        <tr><td class="label">Donor Address:</td><td class="value">{{donorAddress}}</td></tr>
+        
         <tr><td class="label">Donor PAN:</td><td class="value">{{donorPan}}</td></tr>
-        <tr><td class="label">Payment Mode:</td><td class="value">Online (Razorpay)</td></tr>
+        <tr><td class="label">Payment Mode:</td><td class="value">{{modeOfPayment}}</td></tr>
+        <tr><td class="label">Purpose of Donation:</td><td class="value">{{purposeOfDonation}}</td></tr>
     </table>
 
     <div class="amount-box">
@@ -344,6 +354,16 @@
         <p class="amount-words">(Rupees {{amountInWords}} Only)</p>
     </div>
 
+    <div class="footer">
+        <p><b>DECLARATION UNDER SECTION 80G</b></p>
+        <p>This is to certify that the above donation has been received by
+
+<strong>ORBOSIS GLOBAL FOUNDATION,</strong> which is approved under <strong>Section 80G of the Income Tax Act, 1961.</strong></p>
+             
+        <p>The donor is eligible to claim deduction under Section 80G, subject to applicable limits and provisions of the Act.</p>
+        <p>No goods or services have been provided in return for this donation.</p>
+        <p style="margin-top: 5px; color: #1a5f7a; font-weight: bold;">Thank you for your generous contribution. Your support helps us create meaningful and lasting impact.</p>
+    </div>
     <div class="signature-section">
         <div class="signature-box">
             <p style="color: #1a5f7a; font-weight: bold; font-size: 12px; margin-bottom: 2px;">For {{ngoName}}</p>
@@ -352,10 +372,241 @@
         </div>
     </div>
 
+</div>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        @page { size: A4; margin: 10mm; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            padding: 0; margin: 0; color: #333; line-height: 1.4; 
+        }
+        
+        .receipt-box { 
+            width: 100%; 
+            max-width: 800px;
+            margin: 0 auto; 
+            border: 2px solid #1a5f7a;
+            padding: 15px; 
+            position: relative; 
+            box-sizing: border-box;
+            background-color: #fff;
+        }
+
+        .watermark { 
+            position: absolute; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%) rotate(-45deg); 
+            width: 60%;
+            opacity: 0.05;
+            z-index: 0;
+            pointer-events: none;
+            text-align: center;
+        }
+        
+        .watermark img {
+            width: 100%;
+            height: auto;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #1a5f7a;
+            padding-bottom: 5px; 
+            margin-bottom: 10px; 
+            position: relative;
+            z-index: 1;
+        }
+        
+        .logo-container {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 5px auto;
+        }
+
+        .logo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .ngo-name { 
+            font-size: 26px; 
+            font-weight: 900; 
+            color: #1a5f7a; 
+            margin: 0 0 5px 0; 
+            text-transform: uppercase; 
+        }
+
+        .sub-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .ngo-address { font-size: 12px; color: #555; margin: 0 auto; max-width: 450px; }
+        
+        .contact-info {
+            text-align: right;
+            font-size: 11px;
+            color: #555;
+            min-width: 150px;
+        }
+        .contact-info p { margin: 2px 0; }
+
+        .tax-info { 
+            font-size: 11px; 
+            color: #555;
+        }
+
+        .receipt-title { 
+            text-align: center; font-size: 20px; font-weight: bold; 
+            margin: 10px 0; color: #fff; background: #1a5f7a; 
+            padding: 7px; border-radius: 4px; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .details-table { width: 100%; margin-top: 10px; border-collapse: collapse; position: relative; z-index: 1; }
+        .details-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; font-size: 12px; vertical-align: top; }
+        .label { font-weight: bold; color: #555; width: 30%; }
+        .value { color: #000; font-weight: 600; }
+
+        .amount-box { 
+            margin-top: 15px; background: #f0f7f9; 
+            padding: 12px; border-left: 5px solid #1a5f7a; 
+            position: relative; z-index: 1;
+        }
+        .amount-label { font-size: 12px; color: #666; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .amount-text { font-size: 22px; font-weight: bold; color: #1a5f7a; margin: 5px 0; }
+        .amount-words { font-size: 13px; font-style: italic; color: #444; margin: 0; }
+
+        .declaration-section {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            background-color: #fdfdfd;
+            font-size: 10px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .declaration-section p {
+            margin: 5px 0;
+        }
+
+        .signature-section { 
+            margin-top: 20px; 
+            display: flex; justify-content: flex-end; text-align: center; 
+            position: relative; z-index: 1;
+        }
+        .signature-box { width: 200px; }
+        .signature-img { display: block; margin: 0 auto; max-height: 60px; mix-blend-mode: multiply; }
+        .sig-line { border-top: 1px solid #333; margin-top: 5px; padding-top: 5px; font-size: 11px; font-weight: bold; }
+
+        .footer { 
+            margin-top: 20px; text-align: center; 
+            font-size: 10px; color: #666; line-height: 1.5; 
+            border-top: 1px solid #eee; padding-top: 10px; 
+            position: relative; z-index: 1;
+        }
+    </style>
+</head>
+<body>
+<div class="receipt-box">
+    <div class="watermark">
+        <img src="{{ngoLogo}}" alt="Watermark" />
+    </div>
+
+    <div class="header">
+        <div class="logo-container">
+            <img src="{{ngoLogo}}" alt="NGO Logo" />
+        </div>
+        <!-- <h1 class="ngo-name">{{ngoName}}</h> -->
+        <!-- <p class="ngo-address">{{ngoAddress}}</p> -->
+    </div>
+
+    <div class="sub-header">
+        <div class="tax-info">
+            <p class="ngo-address">{{ngoAddress}}</p>
+            <strong>PAN:</strong> {{ngoPan}} &nbsp;|&nbsp; 
+            <strong>80G Reg No:</strong> {{registration80G}} <br> 
+            <strong>Validity:</strong> {{validity}}
+        </div>
+        <div class="contact-info">
+            <p><strong>Date:</strong> {{date}}</p>
+            <p><strong>Web:</strong> www.orbosisfoundation.org</p>
+            <p><strong>Email:</strong> orbosisfoundation@gmail.com</p>
+            
+            
+        </div>
+    </div>
+
+    <div class="receipt-title">Donation Receipt</div>
+
+    <table class="details-table">
+        <tr>
+            <td class="label">Receipt Number</td>
+            <td class="value">{{receiptNo}}</td>
+        </tr>
+        <tr>
+            <td class="label">Transaction ID</td>
+            <td class="value">{{transactionId}}</td>
+        </tr>
+        <tr>
+            <td class="label">Donor Name</td>
+            <td class="value">{{donorName}}</td>
+        </tr>
+        <tr>
+            <td class="label">Donor Address</td>
+            <td class="value">{{donorAddress}}</td>
+        </tr>
+        <tr>
+            <td class="label">Donor PAN</td>
+            <td class="value">{{donorPan}}</td>
+        </tr>
+        <tr>
+            <td class="label">Payment Mode</td>
+            <td class="value" style="text-transform: capitalize;">{{modeOfPayment}}</td>
+        </tr>
+        <tr>
+            <td class="label">Purpose of Donation</td>
+            <td class="value">{{donationPurpose}}</td>
+        </tr>
+    </table>
+
+    <div class="amount-box">
+        <p class="amount-label">Amount Received</p>
+        <p class="amount-text">₹ {{amount}} /-</p>
+        <p class="amount-words">(Rupees {{amountInWords}} Only)</p>
+    </div>
+
+    <div class="declaration-section">
+        <p><strong>DECLARATION UNDER SECTION 80G</strong></p>
+        <p>This is to certify that the above donation has been received by <strong>{{ngoName}}</strong>, which is approved under <strong>Section 80G of the Income Tax Act, 1961.</strong></p>
+        <p>The donor is eligible to claim deduction under Section 80G, subject to applicable limits and provisions of the Act.</p>
+        <p>No goods or services have been provided in return for this donation.</p>
+    </div>
+
+    <div class="signature-section">
+        <div class="signature-box">
+            <p style="color: #1a5f7a; font-weight: bold; font-size: 12px; margin-bottom: 5px;">For {{ngoName}}</p>
+            <img src="{{signature}}" class="signature-img" alt="Signature" />
+            <div class="sig-line">Authorised Signatory</div>
+        </div>
+    </div>
+
     <div class="footer">
-        <p>Eligible for deduction under <strong>Section 80G of the Income Tax Act, 1961</strong>.</p>
-        <p>This is a computer-generated receipt. No physical signature required.</p>
-        <p style="margin-top: 5px; color: #1a5f7a; font-weight: bold;">Thank you for your support!</p>
+        <p style="margin-top: 10px; color: #1a5f7a; font-weight: bold;">Thank you for your generous contribution. Your support helps us create meaningful and lasting impact.</p>
     </div>
 </div>
 </body>

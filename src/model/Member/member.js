@@ -29,16 +29,23 @@ const memberSchema = new mongoose.Schema(
       default: "pending",
     },
     appointmentLetterIssued: {
-  type: Boolean,
-  default: false,
-},
-appointmentLetterUrl: {
-  type: String,
-},
+      type: Boolean,
+      default: false,
+    },
+    appointmentLetterUrl: {
+      type: String,
+    },
     appointmentLetterPDF: { type: Buffer }, // Store PDF binary
-appointmentLetterDate: {
-  type: Date,
-},
+    appointmentLetterDate: {
+      type: Date,
+    },
+    idCardCloudinaryUrl: { type: String },
+    appointmentLetterCloudinaryUrl: { type: String },
+    membershipCertificateCloudinaryUrl: { type: String },
+
+    idCardPDF: { type: Buffer },
+    appointmentLetterPDF: { type: Buffer },
+    membershipCertificatePDF: { type: Buffer },
     // ================= CERTIFICATE FIELDS =================
     membershipCertificateIssued: { type: Boolean, default: false },
     membershipCertificatePDF: { type: Buffer }, // Store PDF binary
@@ -50,6 +57,7 @@ appointmentLetterDate: {
       unique: true,
       default: () => `MEM${Date.now()}`,
     },
+
     // ================= ID CARD FIELDS =================
     idCardIssued: {
       type: Boolean,
@@ -62,7 +70,7 @@ appointmentLetterDate: {
       type: String, // /uploads/id-cards/ID_xxx.pdf
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model("Member", memberSchema);

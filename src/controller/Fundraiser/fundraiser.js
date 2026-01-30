@@ -97,7 +97,7 @@
 //     res.status(500).json({ message: error.message });
 //   }
 // };
-    import Fundraiser from "../../model/Fundraiser/fundraiser.js";
+import Fundraiser from "../../model/Fundraiser/fundraiser.js";
 // import SignupOtp from "../../model/SignupOtp/SignupOtp.js";
 import User from "../../model/Auth/auth.js";
 import bcrypt from "bcrypt";
@@ -108,11 +108,8 @@ import { sendFundraiserWelcomeEmail } from "../../utils/mail.js";
 const generateFundraiserPassword = (name, mobile) => {
   if (!name || !mobile) return null;
 
-  // first 3 letters of name
   const cleanName = name.replace(/\s+/g, "");
   const namePart = cleanName.substring(0, 3).toLowerCase();
-
-  // last 4 digits of mobile
   const mobileStr = mobile.toString();
   if (mobileStr.length < 4) return null;
 
@@ -141,7 +138,7 @@ export const registerFundraiser = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // ⚠️ OTP Check removed because frontend has no OTP flow for this form yet.
+    
     // Admin will verify details manually before approval.
     // const otpRecord = await SignupOtp.findOne({
     //   email,
@@ -153,13 +150,12 @@ export const registerFundraiser = async (req, res) => {
     //   return res.status(400).json({ message: "Please verify email first" });
     // }
 
-    // ❌ already applied
+    // already applied
     const existing = await Fundraiser.findOne({ email });
     if (existing) {
       return res.status(400).json({ message: "Fundraiser already registered" });
     }
 
-    // Handle File Uploads
     let aadharCardUrl = "";
     let panCardUrl = "";
 
@@ -177,11 +173,10 @@ export const registerFundraiser = async (req, res) => {
             }
         }
     } catch (uploadError) {
-        console.error("❌ Cloudinary Upload Error:", uploadError);
+        console.error(" Cloudinary Upload Error:", uploadError);
         return res.status(500).json({ message: "File upload failed: " + uploadError.message });
     }
 
-    // ⚠️ Generate dummy password to satisfy Schema if 'password' is required
     const dummyPassword = await bcrypt.hash("Pending@123", 10);
 
     await Fundraiser.create({
@@ -191,14 +186,13 @@ export const registerFundraiser = async (req, res) => {
       fundraiserType,
       reason,
       status: "pending",
-      password: dummyPassword, // Added to prevent Schema Validation Error
+      password: dummyPassword, 
       isPhoneVerified: isPhoneVerified === 'true' || isPhoneVerified === true,
       isEmailVerified: isEmailVerified === 'true' || isEmailVerified === true,
       aadharCard: aadharCardUrl,
       panCard: panCardUrl
     });
 
-    // Notification
     try {
         const newNotification = await Notification.create({
             userType: "admin",
@@ -213,14 +207,14 @@ export const registerFundraiser = async (req, res) => {
             io.to("admins").emit("admin-notification", newNotification);
         }
     } catch (notifyError) {
-        console.error("⚠️ Notification Error:", notifyError);
+        console.error(" Notification Error:", notifyError);
     }
 
     return res.status(201).json({
       message: "Fundraiser registered, pending admin approval",
     });
   } catch (err) {
-    console.error("❌ Register Fundraiser Controller Error:", err.message);
+    console.error(" Register Fundraiser Controller Error:", err.message);
     return res.status(500).json({ message: err.message });
   }
 };
@@ -262,18 +256,14 @@ export const updateFundraiserStatus = async (req, res) => {
         role: "fundraiser",
       });
 
-      // 1. Generate Password (Donor Logic: Name@Last4Mobile)
+      // 1. Generate Password ( Logic: Name@Last4Mobile)
       generatedPassword = generateFundraiserPassword(fundraiser.fullName, fundraiser.mobile);
       if (!generatedPassword) {
-         // Fallback
          generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
       }
       
       const hash = await bcrypt.hash(generatedPassword, 10);
-
-      // 2. Create or Update User
       if (!user) {
-        // Create new user
         const cleanName = (fundraiser.fullName || "fundraiser").toLowerCase().replace(/\s+/g, "");
         const uniqueSuffix = Math.random().toString(36).substring(2, 6);
         const memberId = `${cleanName}-${uniqueSuffix}`;
@@ -291,7 +281,6 @@ export const updateFundraiserStatus = async (req, res) => {
           createdBy: adminId,
         });
       } else {
-        // Update existing user (Fixes "User already exists" error)
         user.password = hash;
         user.tempPassword = true;
         user.fullName = fundraiser.fullName;
@@ -306,7 +295,6 @@ export const updateFundraiserStatus = async (req, res) => {
       fundraiser.approvedAt = new Date();
       await fundraiser.save();
 
-      // Send Email
       try {
           await sendFundraiserWelcomeEmail({
               toEmail: fundraiser.email,

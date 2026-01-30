@@ -262,6 +262,7 @@ import notificationRouter from "./src/routes/Notification/notification.js";
 import taskRouter from "./src/routes/Task/task.js";
 import eventCertificateRoute from "./src/routes/EventCertificate/eventCertificate.js";
 import fundraiserRoutes from "./src/routes/Fundraiser/fundraiser.js";
+import campaignRoutes from "./src/routes/Campaign/campaign.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -288,7 +289,7 @@ app.use(
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       } else {
-        console.error("❌ CORS BLOCKED:", origin);
+        console.error(" CORS BLOCKED:", origin);
         return callback(new Error("Not allowed by CORS"));
       }
     },
@@ -494,6 +495,7 @@ app.use("/api/event-certificate", eventCertificateRoute);
 
 // Fundraising
 app.use("/api/fundraising", fundRaisingrout);
+app.use("/api/campaign", campaignRoutes);
 
 // Audit Report
 app.use("/api/report", auditReportRoutes);

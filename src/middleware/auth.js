@@ -49,7 +49,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../model/Auth/auth.js';
 
-// 🔐 STRICT AUTH (Login REQUIRED)
 async function requireAuth(req, res, next) {
   try {
     const authHeader = req.headers.authorization || '';
@@ -58,7 +57,7 @@ async function requireAuth(req, res, next) {
       : null;
 
     if (!token) {
-      console.log("❌ [Auth] No token provided in header");
+      console.log("[Auth] No token provided in header");
       return res.status(401).json({ message: 'Authentication required' });
     }
 
@@ -70,14 +69,14 @@ async function requireAuth(req, res, next) {
     const user = await User.findById(decoded.userId).select('-password');
 
     if (!user) {
-      console.log("❌ [Auth] User not found in DB for ID:", decoded.userId);
+      console.log("[Auth] User not found in DB for ID:", decoded.userId);
       return res.status(401).json({ message: 'Invalid token' });
     }
 
     req.user = user;
     next();
   } catch (error) {
-    console.error("❌ [Auth] Verification Error:", error.message);
+    console.error(" [Auth] Verification Error:", error.message);
     return res.status(401).json({
       message: 'Unauthorized',
       error: error.message
@@ -85,7 +84,6 @@ async function requireAuth(req, res, next) {
   }
 }
 
-// 🔓 OPTIONAL AUTH (Guest + Logged-in BOTH)
 async function optionalAuth(req, res, next) {
   try {
     const authHeader = req.headers.authorization || '';
@@ -93,7 +91,6 @@ async function optionalAuth(req, res, next) {
       ? authHeader.slice(7)
       : null;
 
-    // 🟢 Guest user
     if (!token) {
       req.user = null;
       return next();
@@ -109,13 +106,11 @@ async function optionalAuth(req, res, next) {
     req.user = user || null;
     next();
   } catch (error) {
-    // ❗ Token galat ho tab bhi public treat
     req.user = null;
     next();
   }
 }
 
-// 🔐 ROLE BASED
 function requireAdmin(req, res, next) {
 console.log("🔐 ADMIN CHECK USER:", req.user);
   if (!req.user || req.user.role !== "admin") {
@@ -140,7 +135,7 @@ function requireAdminOrVolunteer(req, res, next) {
 
 export {
   requireAuth,
-  optionalAuth, // ⭐ NEW EXPORT
+  optionalAuth, 
   requireAdmin,
   requireVolunteer,
   requireAdminOrVolunteer

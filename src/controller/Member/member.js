@@ -178,31 +178,218 @@ export const registerMember = async (req, res) => {
   }
 };
 
+// export const issueIdCard = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+
+//     let member = null;
+//     if (mongoose.Types.ObjectId.isValid(id)) {
+//       member = await Member.findById(id).lean();
+//     }
+//     if (!member) member = await Member.findOne({ memberId: id }).lean();
+
+//     if (!member) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Member not found",
+//       });
+//     }
+
+//     // 🧾 Generate ID Card PDF (Buffer) - Stored in DB
+//     const doc = new PDFDocument({ size: [325, 204], margin: 0 }); // ID Card size
+//     const buffers = [];
+//     doc.on("data", (chunk) => buffers.push(chunk));
+
+//     // -- Professional Design --
+
+//     // Profile Photo
+//     // 1. Background
+//     doc.rect(0, 0, 325, 204).fill("#FFFFFF");
+
+//     // 2. Header Shape (Modern Curve)
+//     doc.save();
+//     doc.path("M 0 0 L 325 0 L 325 50 Q 162.5 80 0 50 Z");
+//     doc.fill("#4F46E5"); // Indigo-600
+//     doc.restore();
+
+//     // 3. Organization Name
+//     doc
+//       .fillColor("#FFFFFF")
+//       .fontSize(14)
+//       .font("Helvetica-Bold")
+//       .text("ORBOSIS FOUNDATION", 0, 20, {
+//         align: "center",
+//         characterSpacing: 1,
+//       });
+
+//     // 4. Profile Photo
+//     const photoY = 65;
+//     const photoSize = 70;
+//     const photoX = 20;
+
+//     if (member.profilePhoto) {
+//       try {
+//         const photoRes = await axios.get(member.profilePhoto, {
+//           responseType: "arraybuffer",
+//         });
+//         const photoBuffer = Buffer.from(photoRes.data, "binary");
+//         // Circular Mask
+//         doc.save();
+//         doc
+//           .circle(photoX + photoSize / 2, photoY + photoSize / 2, photoSize / 2)
+//           .clip();
+//         doc.image(photoBuffer, photoX, photoY, {
+//           cover: [photoSize, photoSize],
+//           align: "center",
+//           valign: "center",
+//         });
+//         doc.restore();
+
+//         // Border
+//         doc
+//           .circle(photoX + photoSize / 2, photoY + photoSize / 2, photoSize / 2)
+//           .lineWidth(2)
+//           .strokeColor("#4F46E5")
+//           .stroke();
+//       } catch (e) {
+//         console.error("Photo fetch failed:", e.message);
+//         doc
+//           .circle(photoX + photoSize / 2, photoY + photoSize / 2, photoSize / 2)
+//           .lineWidth(1)
+//           .strokeColor("#CCCCCC")
+//           .stroke();
+//       }
+//     }
+
+//     // 5. Member Details
+//     const textX = 110;
+//     let textY = 70;
+
+//     doc
+//       .fillColor("#111827")
+//       .fontSize(12)
+//       .font("Helvetica-Bold")
+//       .text(member.fullName, textX, textY);
+//     textY += 18;
+
+//     // Footer
+//     doc.rect(0, 184, 325, 20).fill("#f3f4f6");
+//     doc
+//       .fillColor("#4F46E5")
+//       .fontSize(8)
+//       .text("www.orbosisfoundation.org", 0, 190, { align: "center" });
+//     doc.fontSize(9).font("Helvetica");
+
+//     const addField = (label, value) => {
+//       doc.fillColor("#6B7280").text(label, textX, textY, { continued: true });
+//       doc.fillColor("#111827").text(`  ${value}`);
+//       textY += 13;
+//     };
+
+//     addField("ID:", member.memberId);
+//     addField("Role:", "Member");
+//     addField("Phone:", member.contactNumber || "N/A");
+//     addField("Joined:", new Date(member.createdAt).toLocaleDateString());
+
+//     // 6. QR Code (For re-download/verification)
+//     try {
+//       const baseUrl = process.env.BACKEND_URL || "http://localhost:3000";
+//       const qrData = `${baseUrl}/api/member/download-id-card/${member._id}?mode=download`;
+//       const qrCodeDataUrl = await QRCode.toDataURL(qrData, { margin: 0 });
+//       const qrBuffer = Buffer.from(qrCodeDataUrl.split(",")[1], "base64");
+
+//       doc.image(qrBuffer, 250, 130, { width: 60, height: 60 });
+
+//       doc
+//         .fontSize(6)
+//         .fillColor("#6B7280")
+//         .text("Scan to Download", 250, 192, { width: 60, align: "center" });
+//     } catch (qrErr) {
+//       console.error("QR Generation failed:", qrErr);
+//     }
+
+//     // 7. Footer Accent
+//     doc.rect(0, 200, 325, 4).fill("#4F46E5");
+
+//     doc.end();
+
+//     const pdfBuffer = await new Promise((resolve) => {
+//       doc.on("end", () => resolve(Buffer.concat(buffers)));
+//     });
+
+//     // Save Buffer to DB
+//     const updatedMember = await Member.findByIdAndUpdate(
+//       member._id,
+//       {
+//         $set: {
+//           idCardIssued: true,
+//           idCardPDF: pdfBuffer, // Store binary
+//           idCardIssueDate: new Date(),
+//         },
+//         $unset: { idCardUrl: 1 }, // Remove old URL field if exists
+//       },
+//       { new: true, strict: false },
+//     ).lean();
+
+//     // Create notification for member
+//     try {
+//       const user = await User.findOne({ email: member.email });
+//       const targetUserId = user ? user._id : member._id;
+
+//       const newNotification = await Notification.create({
+//         userType: "member",
+//         userId: targetUserId,
+//         type: "id_card",
+//         title: "ID Card Issued",
+//         message:
+//           "Your member ID card has been issued and is ready for download.",
+//         redirectUrl: "/member-documents", // Redirect to documents page
+//         read: false,
+//       });
+
+//       const io = req.app.get("io");
+//       if (io) {
+//         io.to(`user-${targetUserId}`).emit(
+//           "user-notification",
+//           newNotification,
+//         );
+//       }
+//     } catch (notifErr) {
+//       console.error("Notification creation failed:", notifErr);
+//     }
+
+//     return res.json({
+//       success: true,
+//       message: "ID Card Issued Successfully",
+//       member: updatedMember,
+//     });
+//   } catch (err) {
+//     console.error("issueIdCard ERROR:", err);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server error",
+//       error: err.message,
+//     });
+//   }
+// };
 export const issueIdCard = async (req, res) => {
   try {
     const { id } = req.params;
+    let member = (await Member.findById(id)) || (await Member.findOne({ memberId: id }));
 
-    let member = null;
-    if (mongoose.Types.ObjectId.isValid(id)) {
-      member = await Member.findById(id).lean();
-    }
-    if (!member) member = await Member.findOne({ memberId: id }).lean();
+    if (!member) return res.status(404).json({ success: false, message: "Member not found" });
 
-    if (!member) {
-      return res.status(404).json({
-        success: false,
-        message: "Member not found",
-      });
-    }
-
-    // 🧾 Generate ID Card PDF (Buffer) - Stored in DB
-    const doc = new PDFDocument({ size: [325, 204], margin: 0 }); // ID Card size
+    // 🧾 Generate ID Card PDF (Buffer)
+    const doc = new PDFDocument({ size: [325, 204], margin: 0 });
     const buffers = [];
     doc.on("data", (chunk) => buffers.push(chunk));
-
+    
+    const bufferPromise = new Promise((resolve) => {
+        doc.on("end", () => resolve(Buffer.concat(buffers)));
+    });
+    
     // -- Professional Design --
 
-    // Profile Photo
     // 1. Background
     doc.rect(0, 0, 325, 204).fill("#FFFFFF");
 
@@ -229,10 +416,17 @@ export const issueIdCard = async (req, res) => {
 
     if (member.profilePhoto) {
       try {
-        const photoRes = await axios.get(member.profilePhoto, {
+        // 🛠️ Fix: Ensure image is JPG/PNG (PDFKit doesn't support WebP)
+        let photoUrl = member.profilePhoto;
+        if (photoUrl.includes("cloudinary.com") && photoUrl.endsWith(".webp")) {
+            photoUrl = photoUrl.replace(".webp", ".jpg");
+        }
+
+        const photoRes = await axios.get(photoUrl, {
           responseType: "arraybuffer",
         });
-        const photoBuffer = Buffer.from(photoRes.data, "binary");
+        const photoBuffer = Buffer.from(photoRes.data);
+        
         // Circular Mask
         doc.save();
         doc
@@ -291,7 +485,7 @@ export const issueIdCard = async (req, res) => {
     addField("Phone:", member.contactNumber || "N/A");
     addField("Joined:", new Date(member.createdAt).toLocaleDateString());
 
-    // 6. QR Code (For re-download/verification)
+    // 6. QR Code
     try {
       const baseUrl = process.env.BACKEND_URL || "http://localhost:3000";
       const qrData = `${baseUrl}/api/member/download-id-card/${member._id}?mode=download`;
@@ -313,124 +507,133 @@ export const issueIdCard = async (req, res) => {
 
     doc.end();
 
-    const pdfBuffer = await new Promise((resolve) => {
-      doc.on("end", () => resolve(Buffer.concat(buffers)));
-    });
+    const pdfBuffer = await bufferPromise;
 
-    // Save Buffer to DB
+    if (pdfBuffer.length === 0) {
+        throw new Error("Generated PDF buffer is empty");
+    }
+
+    // 🔥 NEW: Upload to Cloudinary instead of just saving buffer
+    let cloudinaryUrl = "";
+    try {
+      cloudinaryUrl = await uploadBufferToCloudinary(
+        pdfBuffer, 
+        `ID_Card_${member.memberId}.pdf`, 
+        "member_docs/id_cards"
+      );
+    } catch (uploadErr) {
+      console.error("Cloudinary Upload Failed:", uploadErr);
+      // Fallback: Agar cloudinary fail ho toh buffer DB mein save ho jayega
+    }
+
+    // Save URL and Buffer to DB
     const updatedMember = await Member.findByIdAndUpdate(
       member._id,
       {
         $set: {
           idCardIssued: true,
-          idCardPDF: pdfBuffer, // Store binary
+          idCardCloudinaryUrl: cloudinaryUrl, // Cloudinary Link
+          idCardPDF: pdfBuffer, // Fallback Buffer
           idCardIssueDate: new Date(),
         },
-        $unset: { idCardUrl: 1 }, // Remove old URL field if exists
       },
-      { new: true, strict: false },
+      { new: true }
     ).lean();
-
-    // Create notification for member
-    try {
-      const user = await User.findOne({ email: member.email });
-      const targetUserId = user ? user._id : member._id;
-
-      const newNotification = await Notification.create({
-        userType: "member",
-        userId: targetUserId,
-        type: "id_card",
-        title: "ID Card Issued",
-        message:
-          "Your member ID card has been issued and is ready for download.",
-        redirectUrl: "/member-documents", // Redirect to documents page
-        read: false,
-      });
-
-      const io = req.app.get("io");
-      if (io) {
-        io.to(`user-${targetUserId}`).emit(
-          "user-notification",
-          newNotification,
-        );
-      }
-    } catch (notifErr) {
-      console.error("Notification creation failed:", notifErr);
-    }
 
     return res.json({
       success: true,
-      message: "ID Card Issued Successfully",
+      message: "ID Card Issued on Cloudinary",
+      url: cloudinaryUrl || "Generated locally",
       member: updatedMember,
     });
   } catch (err) {
-    console.error("issueIdCard ERROR:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: err.message,
-    });
+    console.error("Issue ID Card Error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
+// export const downloadIdCard = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { mode } = req.query; // 'preview' or 'download'
 
+//     let member = null;
+//     if (mongoose.Types.ObjectId.isValid(id)) {
+//       member = await Member.findById(id).lean();
+//     }
+//     if (!member) member = await Member.findOne({ memberId: id }).lean();
+
+//     if (!member) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Member not found",
+//       });
+//     }
+
+//     if (!member.idCardIssued || (!member.idCardPDF && !member.idCardUrl)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "ID Card not generated yet",
+//       });
+//     }
+
+//     // Serve from DB Buffer
+//     const disposition = mode === "preview" ? "inline" : "attachment";
+//     res.setHeader(
+//       "Content-Disposition",
+//       `${disposition}; filename="Member_ID_${member.memberId}.pdf"`,
+//     );
+//     res.setHeader("Content-Type", "application/pdf");
+
+//     // Handle Binary (BSON) or Buffer
+//     const bufferData =
+//       member.idCardPDF && member.idCardPDF.buffer
+//         ? member.idCardPDF.buffer
+//         : member.idCardPDF;
+
+//     if (bufferData) {
+//       return res.send(bufferData);
+//     } else if (member.idCardUrl) {
+//       // Fallback for old cards
+//       return res.redirect(member.idCardUrl);
+//     }
+
+//     return res
+//       .status(404)
+//       .json({ success: false, message: "ID Card data missing" });
+//   } catch (err) {
+//     console.error("downloadIdCard ERROR:", err);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server error",
+//     });
+//   }
+// };
 export const downloadIdCard = async (req, res) => {
   try {
     const { id } = req.params;
-    const { mode } = req.query; // 'preview' or 'download'
+    const member = await Member.findById(id).lean();
 
-    let member = null;
-    if (mongoose.Types.ObjectId.isValid(id)) {
-      member = await Member.findById(id).lean();
-    }
-    if (!member) member = await Member.findOne({ memberId: id }).lean();
+    if (!member) return res.status(404).json({ message: "Not found" });
 
-    if (!member) {
-      return res.status(404).json({
-        success: false,
-        message: "Member not found",
-      });
+    // 1. Cloudinary Priority
+    if (member.idCardCloudinaryUrl) {
+      return res.redirect(member.idCardCloudinaryUrl);
     }
 
-    if (!member.idCardIssued || (!member.idCardPDF && !member.idCardUrl)) {
-      return res.status(400).json({
-        success: false,
-        message: "ID Card not generated yet",
-      });
+    // 2. Static/Buffer Fallback
+    if (member.idCardPDF) {
+      res.setHeader("Content-Type", "application/pdf");
+      const buffer = member.idCardPDF.buffer || member.idCardPDF;
+      return res.send(buffer);
     }
 
-    // Serve from DB Buffer
-    const disposition = mode === "preview" ? "inline" : "attachment";
-    res.setHeader(
-      "Content-Disposition",
-      `${disposition}; filename="Member_ID_${member.memberId}.pdf"`,
-    );
-    res.setHeader("Content-Type", "application/pdf");
-
-    // Handle Binary (BSON) or Buffer
-    const bufferData =
-      member.idCardPDF && member.idCardPDF.buffer
-        ? member.idCardPDF.buffer
-        : member.idCardPDF;
-
-    if (bufferData) {
-      return res.send(bufferData);
-    } else if (member.idCardUrl) {
-      // Fallback for old cards
-      return res.redirect(member.idCardUrl);
-    }
-
-    return res
-      .status(404)
-      .json({ success: false, message: "ID Card data missing" });
+    // 3. Absolute Fallback (Static File if nothing works)
+    return res.redirect("/assets/static/id-card-sample.pdf");
+    
   } catch (err) {
-    console.error("downloadIdCard ERROR:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    res.status(500).json({ success: false, message: "Error" });
   }
 };
-
 export const issueAppointmentLetter = async (req, res) => {
   try {
     const { id } = req.params;
@@ -499,7 +702,7 @@ export const issueAppointmentLetter = async (req, res) => {
     doc.restore();
 
     // Reset position for body
-    doc.y = 160;
+    doc.y = 135;
     doc.fillColor(secondaryColor).opacity(1);
 
     // 4. Ref No & Date
@@ -513,7 +716,7 @@ export const issueAppointmentLetter = async (req, res) => {
     doc.text(`Ref No: OF/MEM/${member.memberId}`, 50, doc.y);
     doc.text(`Date: ${today}`, 400, doc.y - 10, { align: "right" }); // Adjust Y to align
 
-    doc.moveDown(2);
+    doc.moveDown(1);
 
     // 5. Recipient Details
     const recipientName = name || member.fullName || "Member";
@@ -524,7 +727,7 @@ export const issueAppointmentLetter = async (req, res) => {
     doc.text(recipientName);
     doc.font("Helvetica").fontSize(10).text(recipientAddress, { width: 250 });
 
-    doc.moveDown(2);
+    doc.moveDown(1.5);
 
     // 6. Subject
     doc
@@ -535,7 +738,7 @@ export const issueAppointmentLetter = async (req, res) => {
         underline: true,
       });
 
-    doc.moveDown(2);
+    doc.moveDown(1.5);
 
     // 7. Salutation
     doc.font("Helvetica").fontSize(11).text(`Dear ${recipientName},`, 50);
@@ -562,19 +765,19 @@ export const issueAppointmentLetter = async (req, res) => {
       `We are pleased to inform you that you have been appointed as a ${recipientRole} of Orbosis Foundation, effective from ${startDateStr}. We were very impressed with your background and believe that your skills and experience will be a valuable asset to our organization.`,
       bodyOptions,
     );
-    doc.moveDown();
+    doc.moveDown(0.8);
 
     doc.text(
       "As a member, you will play a vital role in our mission to empower communities and transform lives. We look forward to your active participation and contribution to our various initiatives and programs.",
       bodyOptions,
     );
-    doc.moveDown();
+    doc.moveDown(0.8);
 
     doc.text(
       "This appointment is subject to the rules and regulations of the foundation. We trust that you will perform your duties with the highest level of integrity and dedication.",
       bodyOptions,
     );
-    doc.moveDown(3);
+    doc.moveDown(2);
 
     // 9. Signatures
     const sigY = doc.y;
@@ -599,11 +802,24 @@ export const issueAppointmentLetter = async (req, res) => {
       .fontSize(9)
       .text("www.orbosisfoundation.org", 0, footerY + 20, { align: "center" });
 
-    doc.end();
-
-    const pdfBuffer = await new Promise((resolve) => {
+    const pdfBufferPromise = new Promise((resolve) => {
       doc.on("end", () => resolve(Buffer.concat(buffers)));
     });
+
+    doc.end();
+    const pdfBuffer = await pdfBufferPromise;
+
+    // 🔥 NEW: Upload to Cloudinary instead of just saving buffer
+    let cloudinaryUrl = "";
+    try {
+      cloudinaryUrl = await uploadBufferToCloudinary(
+        pdfBuffer,
+        `Appointment_Letter_${member.memberId}`,
+        "member_docs/appointment_letters"
+      );
+    } catch (uploadErr) {
+      console.error("Cloudinary Upload Failed:", uploadErr);
+    }
 
     // Update database with Buffer
     const updatedMember = await Member.findByIdAndUpdate(
@@ -611,10 +827,11 @@ export const issueAppointmentLetter = async (req, res) => {
       {
         $set: {
           appointmentLetterIssued: true,
+          appointmentLetterCloudinaryUrl: cloudinaryUrl,
           appointmentLetterPDF: pdfBuffer,
           appointmentLetterDate: new Date(),
         },
-        $unset: { appointmentLetterUrl: 1 }, // Remove old URL
+        // $unset: { appointmentLetterUrl: 1 }, // Remove old URL
       },
       { new: true, strict: false },
     ).lean();
@@ -811,11 +1028,24 @@ export const issueMembershipCertificate = async (req, res) => {
       align: "center",
     });
 
-    doc.end();
-
-    const pdfBuffer = await new Promise((resolve) => {
+    const pdfBufferPromise = new Promise((resolve) => {
       doc.on("end", () => resolve(Buffer.concat(buffers)));
     });
+
+    doc.end();
+    const pdfBuffer = await pdfBufferPromise;
+
+    // 🔥 NEW: Upload to Cloudinary instead of just saving buffer
+    let cloudinaryUrl = "";
+    try {
+      cloudinaryUrl = await uploadBufferToCloudinary(
+        pdfBuffer,
+        `Membership_Certificate_${member.memberId}`,
+        "member_docs/certificates"
+      );
+    } catch (uploadErr) {
+      console.error("Cloudinary Upload Failed:", uploadErr);
+    }
 
     // Save to DB
     const updatedMember = await Member.findByIdAndUpdate(
@@ -823,6 +1053,7 @@ export const issueMembershipCertificate = async (req, res) => {
       {
         $set: {
           membershipCertificateIssued: true,
+          membershipCertificateCloudinaryUrl: cloudinaryUrl,
           membershipCertificatePDF: pdfBuffer,
           membershipCertificateDate: iDate,
         },
@@ -878,13 +1109,17 @@ export const downloadMembershipCertificate = async (req, res) => {
     }
     if (!member) member = await Member.findOne({ memberId: id }).lean();
 
-    if (!member || !member.membershipCertificatePDF) {
-      return res.status(404).json({
-        success: false,
-        message: "Certificate not found",
-      });
+    if (!member) {
+      return res.status(404).json({ success: false, message: "Member not found" });
     }
 
+    // 1. Cloudinary Priority
+    if (member.membershipCertificateCloudinaryUrl) {
+      return res.redirect(member.membershipCertificateCloudinaryUrl);
+    }
+
+    // 2. Buffer Fallback
+    if (member.membershipCertificatePDF) {
     const disposition = mode === "preview" ? "inline" : "attachment";
     res.setHeader(
       "Content-Disposition",
@@ -896,6 +1131,9 @@ export const downloadMembershipCertificate = async (req, res) => {
       ? member.membershipCertificatePDF.buffer
       : member.membershipCertificatePDF;
     return res.send(bufferData);
+    }
+
+    return res.status(404).json({ success: false, message: "Certificate not found" });
   } catch (err) {
     console.error("DOWNLOAD CERT ERROR:", err);
     return res.status(500).json({ success: false, message: "Download failed" });
@@ -912,17 +1150,20 @@ export const downloadAppointmentLetter = async (req, res) => {
     }
     if (!member) member = await Member.findOne({ memberId: id }).lean();
 
-    if (
-      !member ||
-      (!member.appointmentLetterPDF && !member.appointmentLetterUrl)
-    ) {
+    if (!member) {
       return res.status(404).json({
         success: false,
         message: "Appointment letter not found",
       });
     }
 
+    // 1. Cloudinary Priority
+    if (member.appointmentLetterCloudinaryUrl) {
+      return res.redirect(member.appointmentLetterCloudinaryUrl);
+    }
+
     // Serve from DB Buffer
+    if (member.appointmentLetterPDF || member.appointmentLetterUrl) {
     const disposition = mode === "preview" ? "inline" : "attachment";
     res.setHeader(
       "Content-Disposition",
@@ -941,6 +1182,9 @@ export const downloadAppointmentLetter = async (req, res) => {
       // Fallback for old letters
       return res.redirect(member.appointmentLetterUrl);
     }
+    }
+
+    return res.status(404).json({ success: false, message: "Appointment letter not found" });
   } catch (err) {
     console.error("DOWNLOAD ERROR:", err);
     return res.status(500).json({
@@ -1249,7 +1493,7 @@ export const updateMemberDocuments = async (req, res) => {
 
     let updateData = {};
 
-    // 1. Profile Photo Upload Logic
+    
     if (files && files.profilePhoto) {
       const result = await cloudinary.uploader.upload(files.profilePhoto[0].path, {
         folder: "members",
@@ -1258,7 +1502,7 @@ export const updateMemberDocuments = async (req, res) => {
       updateData.profilePhoto = result.secure_url;
     }
 
-    // 2. Government ID Proof Upload Logic
+  
     if (files && files.governmentIdProof) {
       const result = await cloudinary.uploader.upload(files.governmentIdProof[0].path, {
         folder: "members",
@@ -1289,7 +1533,22 @@ export const updateMemberDocuments = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
+const uploadBufferToCloudinary = (buffer, fileName, folder) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: folder,
+        resource_type: "auto", 
+        public_id: fileName,
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result.secure_url);
+      }
+    );
+    uploadStream.end(buffer);
+  });
+};
 export const updateMemberProfile = async (req, res) => {
   try {
     const userId = req.user._id || req.user.id; // From auth middleware

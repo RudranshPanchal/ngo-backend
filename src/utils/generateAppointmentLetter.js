@@ -8,7 +8,7 @@ export const generateAppointmentLetter = async (member, customData = {}) => {
     try {
       const doc = new PDFDocument({ size: "A4", margin: 50 });
       const safeId = member.memberId || member._id || "member";
-      // Sanitize filename to remove special characters
+      
       const fileName = `appointment_letter_${String(safeId).replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.pdf`;
       const tempDir = path.resolve("temp");
 
@@ -21,16 +21,15 @@ export const generateAppointmentLetter = async (member, customData = {}) => {
 
       doc.pipe(stream);
 
-      // ================= STYLING =================
-      const primaryColor = "#4c1d95"; // Purple
-      const secondaryColor = "#1f2937"; // Dark Gray
-      const accentColor = "#6b7280"; // Light Gray
+      // ================= STYLING ================
+      const primaryColor = "#4c1d95"; 
+      const secondaryColor = "#1f2937"; 
+      const accentColor = "#6b7280"; 
 
       // 1. Page Border
       doc.lineWidth(2).rect(20, 20, 555, 802).strokeColor(primaryColor).stroke();
 
       // 2. Header
-      // Logo Placeholder (Circle with Initials)
       doc.save();
       doc.circle(80, 80, 30).fillColor(primaryColor).fill();
       doc.fillColor("white").fontSize(22).font("Helvetica-Bold").text("OF", 50, 72, { width: 60, align: "center" });
