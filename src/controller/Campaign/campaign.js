@@ -1,14 +1,37 @@
 import Campaign from "../../model/Campaign/campaign.js";
 import Fundraising from "../../model/fundraising/fundraising.js";
 import { sendEmail } from "../../utils/mail.js";
+import { uploadToCloudinary } from "../../utils/uploader.js";
 
 // CREATE CAMPAIGN
 export const createCampaign = async (req, res) => {
   try {
+    const files = req.files;
+    let beneficiaryPhotoUrl = "";
+    let documentsUrl = "";
+
+    if (files?.beneficiaryPhoto?.[0]) {
+      try {
+        beneficiaryPhotoUrl = await uploadToCloudinary(files.beneficiaryPhoto[0], 'campaigns/photos');
+      } catch (uploadError) {
+        console.error('Error uploading beneficiary photo:', uploadError);
+        return res.status(500).json({ success: false, message: 'Error uploading photo to Cloudinary' });
+      }
+    }
+
+    if (files?.documents?.[0]) {
+      try {
+        documentsUrl = await uploadToCloudinary(files.documents[0], 'campaigns/docs');
+      } catch (uploadError) {
+        console.error('Error uploading documents:', uploadError);
+        return res.status(500).json({ success: false, message: 'Error uploading documents to Cloudinary' });
+      }
+    }
+
     const campaign = await Campaign.create({
       ...req.body,
-      beneficiaryPhoto: req.files?.beneficiaryPhoto?.[0]?.path,
-      documents: req.files?.documents?.[0]?.path,
+      beneficiaryPhoto: beneficiaryPhotoUrl,
+      documents: documentsUrl,
     });
 
     res.status(201).json({
@@ -17,7 +40,8 @@ export const createCampaign = async (req, res) => {
       campaign,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Campaign Creation Error:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -104,4 +128,43 @@ export const updateCampaignStatus = async (req, res) => {
 export const getApprovedCampaigns = async (req, res) => {
   const data = await Campaign.find({ status: "approved" });
   res.json(data);
+};
+
+export const getMyCampaigns = async (req, res) => {
+  try {
+    const fundraiserEmail = req.user.email;
+
+    if (!fundraiserEmail) {
+      return res.status(401).json({ success: false, message: "Authentication error, user email not found." });
+    }
+
+    // 1. Fetch from Campaign collection (Applications) instead of Fundraising (Live)
+    // This ensures Pending and Rejected campaigns are also shown
+    const campaigns = await Campaign.find({ email: fundraiserEmail }).sort({ createdAt: -1 });
+
+    // 2. For approved campaigns, fetch current progress from Fundraising collection
+    const data = await Promise.all(campaigns.map(async (camp) => {
+      let raisedAmount = 0;
+      
+      if (camp.status === 'approved') {
+        const fund = await Fundraising.findOne({ campaignId: camp._id });
+        if (fund) {
+          raisedAmount = fund.raisedAmount || 0;
+        }
+      }
+
+      return {
+        ...camp.toObject(),
+        raisedAmount
+      };
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: data,
+    });
+  } catch (err) {
+    console.error("Fetch My Campaigns Error:", err);
+    res.status(500).json({ success: false, message: "Server error while fetching campaigns." });
+  }
 };

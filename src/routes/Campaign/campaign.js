@@ -5,6 +5,7 @@ import {
   getPendingCampaigns,
   updateCampaignStatus,
   getApprovedCampaigns,
+  getMyCampaigns,
 } from "../../controller/Campaign/campaign.js";
 import { requireAdmin, requireAuth } from "../../middleware/auth.js";
 
@@ -27,5 +28,8 @@ router.patch("/status/:id", requireAuth, requireAdmin, updateCampaignStatus);
 
 // PUBLIC
 router.get("/approved", getApprovedCampaigns);
+
+// FUNDRAISER (Logged in user)
+router.get("/my-campaigns", requireAuth, getMyCampaigns);
 
 export default router;

@@ -125,6 +125,7 @@ import { generatePDFBuffer } from "../../services/pdf.service.js";
 import { NGO_80G } from "../../config/ngo.config.js";
 import { numberToWords } from "../../utils/numberToWords.js";
 import cloudinary from "../../config/cloudinary.js";
+import { uploadToCloudinary } from "../../utils/uploader.js";
 const router = express.Router();
 
 /* ===============================
@@ -201,14 +202,55 @@ router.get("/receipt/:id", requireAuth, async (req, res) => {
         // Yahan 'Donation' use ho raha hai, isliye upar import hona zaroori hai
         const donation = await Donation.findById(req.params.id);
 
-        if (!donation || !donation.receiptUrl) {
-            console.error("❌ Receipt URL missing in DB");
-            return res.status(404).json({ message: "Receipt not found in database" });
+        if (!donation) {
+            return res.status(404).json({ message: "Donation not found" });
         }
 
         // Security Check: Ensure user owns this donation
         if (donation.userId && req.user && donation.userId.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: "Forbidden: You are not authorized to view this receipt." });
+        }
+
+        // --- SELF-HEALING: If receiptUrl is missing, regenerate it ---
+        if (!donation.receiptUrl) {
+            console.log("⚠️ Receipt URL missing in DB. Attempting to regenerate...");
+            try {
+                const receiptData = {
+                    ngoName: NGO_80G.name,
+                    ngoAddress: NGO_80G.address,
+                    ngoPan: NGO_80G.pan,
+                    ngoLogo: NGO_80G.ngoLogo || NGO_80G.logo,
+                    registration80G: NGO_80G.registration80G,
+                    validity: NGO_80G.validity,
+                    donorName: donation.donorName,
+                    donorEmail: donation.donorEmail,
+                    donorPan: donation.panNumber || "N/A",
+                    donorAddress: donation.address || "N/A",
+                    donationPurpose: donation.purposeOfDonation || "N/A",
+                    amount: donation.amount,
+                    amountInWords: numberToWords(donation.amount),
+                    modeOfPayment: donation.modeofDonation,
+                    transactionId: donation.razorpayPaymentId || donation._id,
+                    receiptNo: donation.receiptNo || `REC-${donation._id}`,
+                    date: new Date(donation.createdAt).toLocaleDateString("en-IN"),
+                    declaration: "This donation is eligible for deduction under Section 80G of the Income Tax Act, 1961.",
+                    signature: NGO_80G.signatureImage
+                };
+
+                const pdfBuffer = await generatePDFBuffer(receiptData, "donation");
+                const receiptUrl = await uploadToCloudinary(pdfBuffer, "receipts");
+
+                if (receiptUrl) {
+                    donation.receiptUrl = receiptUrl;
+                    await donation.save();
+                    console.log("✅ Receipt Regenerated & Saved:", receiptUrl);
+                } else {
+                    throw new Error("Cloudinary upload failed during regeneration");
+                }
+            } catch (regenError) {
+                console.error("❌ Receipt Regeneration Failed:", regenError.message);
+                return res.status(404).json({ message: "Receipt not found and could not be generated." });
+            }
         }
 
         // Check if URL is from Cloudinary (starts with http)
