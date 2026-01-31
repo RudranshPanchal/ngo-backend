@@ -493,7 +493,7 @@ export const getLeaderboard = async (req, res) => {
     // Sort by impactScore in descending order (-1)
     // Limit to top 50 or 100
     const leaderboard = await User.find({ role: "volunteer" })
-      .select("fullName profilePic impactScore hoursVolunteered badges volunteerLevel volunteerLevelName")
+      .select("fullName profilePic impactScore hoursVolunteered badges volunteerLevel volunteerLevelName profilePhoto")
       .sort({ impactScore: -1 })
       .limit(50);
 
