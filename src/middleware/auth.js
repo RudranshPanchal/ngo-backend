@@ -132,8 +132,31 @@ function requireAdminOrVolunteer(req, res, next) {
   }
   next();
 }
+ const verifyToken = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+    }
 
+    const token = authHeader.split(" ")[1];
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // Yahan check karein ki aapka payload 'email' bhej raha hai ya nahi
+        // Agar login ke waqt aapne email token mein daali thi, toh ye chalega
+        req.user = {
+            id: decoded.id || decoded._id,
+            email: decoded.email // Yeh line verify karein
+        };
+        
+        next();
+    } catch (err) {
+        return res.status(401).json({ message: "Invalid or expired token" });
+    }
+};
 export {
+  verifyToken,
   requireAuth,
   optionalAuth, 
   requireAdmin,

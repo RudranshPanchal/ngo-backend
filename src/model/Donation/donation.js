@@ -55,7 +55,8 @@ const donationSchema = new mongoose.Schema({
     },
     receiptNo: { 
         type: String, 
-        unique: true // Isse har ID unique rahegi
+        unique: true, 
+        sparse: true
     },
     receiptUrl: { type: String, default: "" },
     

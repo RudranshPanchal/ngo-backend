@@ -22,12 +22,13 @@ const fundraisingSchema = new mongoose.Schema(
       ref: "Campaign",
       required: true,
     },
-
-    // 🔥 FULL CAMPAIGN DATA (COPY)
+     userId: { type: mongoose.Schema.Types.ObjectId,
+       ref: "User", 
+       required: true },
     fullName: String,
     email: String,
     mobile: String,
-
+    role: String,
     campaignTitle: String,
     campaignType: String,
 
