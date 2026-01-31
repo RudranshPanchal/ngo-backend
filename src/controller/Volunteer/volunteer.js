@@ -929,7 +929,7 @@ export const updateVolunteerStatus = async (req, res) => {
         hoursVolunteered: 0,
         badges: [],
         volunteerLevel: 1,
-        volunteerLevelName: "Rookie",
+        volunteerLevelName: "Beginner",
 
         emailVerified: volunteer.isEmailVerified === true,
         phoneVerified: volunteer.isPhoneVerified === true,

@@ -5,6 +5,8 @@ import Event from "../../model/Event/event.js";
 import User from "../../model/Auth/auth.js";
 import Task from "../../model/Task/task.js";
 import path from "path";
+import { Certificate } from "crypto";
+import notification from "../../model/Notification/notification.js";
 
 // Helper: Upload Buffer to Cloudinary
 const uploadStreamToCloudinary = (buffer) => {
@@ -36,7 +38,7 @@ const drawCertificateTemplate = (doc, data) => {
     // REGISTER FONTS
     // ═══════════════════════════════════════════════════════════
     const fontPath = path.join(process.cwd(), 'assets', 'fonts');
-    
+
     doc.registerFont('GreatVibes', path.join(fontPath, 'GreatVibes-Regular.ttf'));
     doc.registerFont('Playfair-Bold', path.join(fontPath, 'playfair-display.bold.ttf'));
     doc.registerFont('Playfair-Regular', path.join(fontPath, 'playfair-display.regular.ttf'));
@@ -114,14 +116,14 @@ const drawCertificateTemplate = (doc, data) => {
     //     doc.restore();
     //     currentY += 75;
     // }
-    const LOGO_WIDTH = 140;  // 🔧 Your desired width
+    const LOGO_WIDTH = 140;
 
     try {
         doc.image("signatures/orbosis.png", centerX - (LOGO_WIDTH / 2), currentY, {
             width: LOGO_WIDTH,
             align: 'center'
         });
-        currentY += 75;  // 🔧 Increased spacing for larger logo
+        currentY += 75;
     } catch (e) {
         // Fallback decorative circle if no logo
         doc.save();
@@ -629,6 +631,30 @@ export const generateEventCertificate = async (req, res) => {
             { $set: { status: "completed", isLocked: true } }
         );
 
+        try {
+            // A. Save Notification to Database (So it shows up on refresh)
+            const newNotification = await notification.create({
+                userType: "volunteer",
+                userId: newCertificate.recipient, 
+                title: "New Certificate Generated",
+                message: `You have been issued a certificate for event: ${event.title}`,
+                type: "certificate_generated",
+                role: "volunteer",
+                read: false,
+            });
+
+            // B. Send Real-Time Socket Alert
+            const io = req.app.get("io"); // Get the socket instance
+            if (io) {
+                // Emit to the specific volunteer's room we set up in Step 1
+                io.to(`volunteer-${newCertificate.assignedTo}`).emit("volunteer-notification", newNotification);
+                console.log("Socket notification sent to volunteer");
+            }
+        } catch (notifError) {
+            console.error("Notification failed:", notifError);
+            // Don't fail the request just because notification failed
+        }
+        // ---------------- END NOTIFICATION LOGIC ----------------
         res.status(201).json({ success: true, data: newCertificate });
 
     } catch (error) {
