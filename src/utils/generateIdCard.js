@@ -4,6 +4,8 @@ import path from "path";
 import QRCode from "qrcode"; 
 import { uploadToCloudinary } from "./uploader.js";
 
+const logoPath = path.join(process.cwd(), "signatures", "orbosis.png");
+
 export async function generateIdCard(member) {
   return new Promise(async (resolve, reject) => {
     try {
@@ -24,6 +26,11 @@ export async function generateIdCard(member) {
 
       /* ================= HEADER ================= */
       doc.rect(0, 0, 325, 42).fill("#7c3aed");
+
+      if (fs.existsSync(logoPath)) {
+        doc.image(logoPath, 10, 6, { width: 30 });
+      }
+
       doc
         .fillColor("white")
         .font("Helvetica-Bold")
