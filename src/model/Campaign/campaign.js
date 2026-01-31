@@ -2,10 +2,12 @@ import mongoose from "mongoose";
 
 const campaignSchema = new mongoose.Schema(
   {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     fullName: String,
     email: String,
     mobile: String,
-
+    role: String,
+     
     campaignTitle: String,
     campaignType: String,
     shortDescription: String,

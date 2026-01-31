@@ -147,43 +147,63 @@ console.log("Saving Purpose:", purposeOfDonation || "General Donation");
       });
     }
 
-    //  SAFE RECEIPT NUMBER USING COUNTER (NO DUPLICATE)
-    const counter = await Counter.findOneAndUpdate(
-      { name: "donationReceipt" },
-      { $inc: { seq: 1 } },
-      { new: true, upsert: true }
-    );
-
-    const customReceiptId = `pay_orbosis${String(counter.seq).padStart(6, "0")}`;
+    // Temporary receipt reference for Razorpay order (actual receipt generated after payment)
+    const tempReceiptRef = `ord_ref_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
     // ONLINE DONATION (RAZORPAY)
     const options = {
       amount: Math.round(amount * 100),
       currency: "INR",
-      receipt: customReceiptId,
+      receipt: tempReceiptRef,
       notes: { fromRegistration, userId, modeofDonation, donorName, donorEmail, fundraisingId },
     };
 
     const order = await razorpay.orders.create(options);
 
-    const newDonation = await Donation.create({
-      userId,
-      amount,
-      modeofDonation,
-      razorpayOrderId: order.id,
-      paymentStatus: "pending",
-      donorName,
-      donorEmail,
-      donorPhone,
-      panNumber,
-      address: address || "N/A",
-      fundraisingId,
-      purposeOfDonation: purposeOfDonation || "General Donation",
-      receiptNo: customReceiptId,
-      is80GEligible: true   
-    });
+    let newDonation;
+    try {
+      newDonation = await Donation.create({
+        userId,
+        amount,
+        modeofDonation,
+        razorpayOrderId: order.id,
+        paymentStatus: "pending",
+        donorName,
+        donorEmail,
+        donorPhone,
+        panNumber,
+        address: address || "N/A",
+        fundraisingId,
+        purposeOfDonation: purposeOfDonation || "General Donation",
+        is80GEligible: true   
+      });
+    } catch (err) {
+      // Fix for "E11000 duplicate key error" on receiptNo: null
+      // This happens if the index is not sparse. We drop it so it can be recreated correctly.
+      if (err.code === 11000 && err.keyPattern && err.keyPattern.receiptNo) {
+        console.log("⚠️ Fixing duplicate index issue on receiptNo...");
+        await Donation.collection.dropIndex("receiptNo_1");
+        newDonation = await Donation.create({
+          userId,
+          amount,
+          modeofDonation,
+          razorpayOrderId: order.id,
+          paymentStatus: "pending",
+          donorName,
+          donorEmail,
+          donorPhone,
+          panNumber,
+          address: address || "N/A",
+          fundraisingId,
+          purposeOfDonation: purposeOfDonation || "General Donation",
+          is80GEligible: true   
+        });
+      } else {
+        throw err;
+      }
+    }
 
-    console.log(`🚀 Order Created: ${customReceiptId}`);
+    console.log(`🚀 Order Created: ${order.id}`);
 
     return res.json({
       success: true,
@@ -191,7 +211,6 @@ console.log("Saving Purpose:", purposeOfDonation || "General Donation");
       amount: order.amount,
       currency: order.currency,
       key_id: keyId,
-      receipt: customReceiptId,
       details: { amount, donorName, donorEmail, fundraisingId },
     });
 
@@ -239,6 +258,16 @@ export const verifyDonationPayment = async (req, res) => {
     donation.razorpaySignature = razorpay_signature;
     donation.paymentStatus = "completed";
     donation.panNumber = finalPan;
+
+    //  GENERATE RECEIPT NUMBER AFTER SUCCESSFUL PAYMENT
+    if (!donation.receiptNo) {
+      const counter = await Counter.findOneAndUpdate(
+        { name: "donationReceipt" },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      );
+      donation.receiptNo = `pay_orbosis${String(counter.seq).padStart(6, "0")}`;
+    }
 
     // --- PDF Generation and Upload Logic ---
     try {

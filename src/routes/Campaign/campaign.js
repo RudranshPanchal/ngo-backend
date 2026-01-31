@@ -5,7 +5,6 @@ import {
   getPendingCampaigns,
   updateCampaignStatus,
   getApprovedCampaigns,
-  getMyCampaigns,
 } from "../../controller/Campaign/campaign.js";
 import { requireAdmin, requireAuth } from "../../middleware/auth.js";
 
@@ -15,6 +14,7 @@ const upload = multer({ dest: "uploads/" });
 // USER → CREATE
 router.post(
   "/apply",
+  requireAuth,
   upload.fields([
     { name: "beneficiaryPhoto", maxCount: 1 },
     { name: "documents", maxCount: 1 },
@@ -30,6 +30,6 @@ router.patch("/status/:id", requireAuth, requireAdmin, updateCampaignStatus);
 router.get("/approved", getApprovedCampaigns);
 
 // FUNDRAISER (Logged in user)
-router.get("/my-campaigns", requireAuth, getMyCampaigns);
+// router.get("/my-campaigns", requireAuth, getMyCampaigns);
 
 export default router;

@@ -6,10 +6,19 @@ import { uploadToCloudinary } from "../../utils/uploader.js";
 // CREATE CAMPAIGN
 export const createCampaign = async (req, res) => {
   try {
+    // 1. Check Authentication (req.user requireAuth middleware se aayega)
+    if (!req.user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Authentication failed. Please login again." 
+      });
+    }
+
     const files = req.files;
     let beneficiaryPhotoUrl = "";
     let documentsUrl = "";
 
+    // 2. Upload Beneficiary Photo to Cloudinary
     if (files?.beneficiaryPhoto?.[0]) {
       try {
         beneficiaryPhotoUrl = await uploadToCloudinary(files.beneficiaryPhoto[0], 'campaigns/photos');
@@ -19,6 +28,7 @@ export const createCampaign = async (req, res) => {
       }
     }
 
+    // 3. Upload Documents to Cloudinary
     if (files?.documents?.[0]) {
       try {
         documentsUrl = await uploadToCloudinary(files.documents[0], 'campaigns/docs');
@@ -28,10 +38,14 @@ export const createCampaign = async (req, res) => {
       }
     }
 
+    // 4. Create Campaign in DB with userId
     const campaign = await Campaign.create({
       ...req.body,
+      userId: req.user.id || req.user._id, // User ki unique ID save ho rahi hai
+      role: req.user.role, // Explicitly save role from logged-in user
       beneficiaryPhoto: beneficiaryPhotoUrl,
       documents: documentsUrl,
+      status: "pending" // Default status
     });
 
     res.status(201).json({
@@ -39,9 +53,13 @@ export const createCampaign = async (req, res) => {
       message: "Campaign request submitted. Waiting for admin approval.",
       campaign,
     });
+
   } catch (err) {
     console.error("Campaign Creation Error:", err);
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ 
+      success: false, 
+      message: err.message || "Internal Server Error" 
+    });
   }
 };
 
@@ -71,7 +89,8 @@ export const updateCampaignStatus = async (req, res) => {
 
   await Fundraising.create({
     campaignId: campaign._id,
-
+userId: campaign.userId,
+    role: campaign.role,
     fullName: campaign.fullName,
     email: campaign.email,
     mobile: campaign.mobile,
@@ -130,41 +149,41 @@ export const getApprovedCampaigns = async (req, res) => {
   res.json(data);
 };
 
-export const getMyCampaigns = async (req, res) => {
-  try {
-    const fundraiserEmail = req.user.email;
+// export const getMyCampaigns = async (req, res) => {
+//   try {
+//     const fundraiserEmail = req.user.email;
 
-    if (!fundraiserEmail) {
-      return res.status(401).json({ success: false, message: "Authentication error, user email not found." });
-    }
+//     if (!fundraiserEmail) {
+//       return res.status(401).json({ success: false, message: "Authentication error, user email not found." });
+//     }
 
-    // 1. Fetch from Campaign collection (Applications) instead of Fundraising (Live)
-    // This ensures Pending and Rejected campaigns are also shown
-    const campaigns = await Campaign.find({ email: fundraiserEmail }).sort({ createdAt: -1 });
+//     // 1. Fetch from Campaign collection (Applications) instead of Fundraising (Live)
+//     // This ensures Pending and Rejected campaigns are also shown
+//     const campaigns = await Campaign.find({ email: fundraiserEmail }).sort({ createdAt: -1 });
 
-    // 2. For approved campaigns, fetch current progress from Fundraising collection
-    const data = await Promise.all(campaigns.map(async (camp) => {
-      let raisedAmount = 0;
+//     // 2. For approved campaigns, fetch current progress from Fundraising collection
+//     const data = await Promise.all(campaigns.map(async (camp) => {
+//       let raisedAmount = 0;
       
-      if (camp.status === 'approved') {
-        const fund = await Fundraising.findOne({ campaignId: camp._id });
-        if (fund) {
-          raisedAmount = fund.raisedAmount || 0;
-        }
-      }
+//       if (camp.status === 'approved') {
+//         const fund = await Fundraising.findOne({ campaignId: camp._id });
+//         if (fund) {
+//           raisedAmount = fund.raisedAmount || 0;
+//         }
+//       }
 
-      return {
-        ...camp.toObject(),
-        raisedAmount
-      };
-    }));
+//       return {
+//         ...camp.toObject(),
+//         raisedAmount
+//       };
+//     }));
 
-    res.status(200).json({
-      success: true,
-      data: data,
-    });
-  } catch (err) {
-    console.error("Fetch My Campaigns Error:", err);
-    res.status(500).json({ success: false, message: "Server error while fetching campaigns." });
-  }
-};
+//     res.status(200).json({
+//       success: true,
+//       data: data,
+//     });
+//   } catch (err) {
+//     console.error("Fetch My Campaigns Error:", err);
+//     res.status(500).json({ success: false, message: "Server error while fetching campaigns." });
+//   }
+// };
