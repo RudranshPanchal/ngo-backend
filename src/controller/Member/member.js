@@ -14,6 +14,8 @@ import fs from "fs";
 import path from "path";
 import { v2 as cloudinary } from "cloudinary";
 
+const logoPath = path.join(process.cwd(), "signatures", "orbosis.png");
+
 const generateMemberPassword = (name, mobile) => {
   if (!name || !mobile) return null;
 
@@ -399,6 +401,11 @@ export const issueIdCard = async (req, res) => {
     doc.fill("#4F46E5"); // Indigo-600
     doc.restore();
 
+    // Logo
+    if (logoPath && fs.existsSync(logoPath)) {
+      doc.image(logoPath, 15, 10, { width: 35 });
+    }
+
     // 3. Organization Name
     doc
       .fillColor("#FFFFFF")
@@ -663,17 +670,23 @@ export const issueAppointmentLetter = async (req, res) => {
     // 1. Header Background
     doc.rect(0, 0, pageWidth, 120).fill(primaryColor);
 
+    let headerTextX = 50;
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, 50, 30, { width: 60 });
+      headerTextX = 120;
+    }
+
     // 2. Organization Name & Logo (Text based for now)
     doc
       .fillColor("#FFFFFF")
       .fontSize(28)
       .font("Helvetica-Bold")
-      .text("ORBOSIS FOUNDATION", 50, 45, { align: "left" });
+      .text("ORBOSIS FOUNDATION", headerTextX, 45, { align: "left" });
 
     doc
       .fontSize(10)
       .font("Helvetica")
-      .text("Empowering Communities, Transforming Lives", 50, 80, {
+      .text("Empowering Communities, Transforming Lives", headerTextX, 80, {
         align: "left",
       });
 
@@ -925,6 +938,20 @@ export const issueMembershipCertificate = async (req, res) => {
 
     // 2. Header / Logo Placeholder
     doc.moveDown(2);
+    let contentY = 60;
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, centerX - 40, 50, { width: 80 });
+      doc.moveDown(5);
+      const logoWidth = 70;
+      doc.image(logoPath, centerX - (logoWidth / 2), contentY, { width: logoWidth });
+      contentY += 85;
+    } else {
+      doc.moveDown(2);
+      contentY += 40;
+    }
+
+    doc.y = contentY;
+
     doc
       .font("Helvetica-Bold")
       .fontSize(30)
@@ -932,6 +959,7 @@ export const issueMembershipCertificate = async (req, res) => {
       .text("ORBOSIS FOUNDATION", { align: "center" });
 
     doc.moveDown(0.5);
+    doc.moveDown(0.3);
     doc
       .fontSize(10)
       .fillColor("#6b7280")
@@ -941,15 +969,18 @@ export const issueMembershipCertificate = async (req, res) => {
       });
 
     doc.moveDown(2.5);
+    doc.moveDown(1.5);
 
     // 3. Title
     doc
       .font("Helvetica-Bold")
       .fontSize(36)
+      .fontSize(32)
       .fillColor("#D4AF37") // Gold Title
       .text("CERTIFICATE OF MEMBERSHIP", { align: "center" });
 
     doc.moveDown(1.5);
+    doc.moveDown(1);
 
     // 4. Body Text
     doc
@@ -959,15 +990,18 @@ export const issueMembershipCertificate = async (req, res) => {
       .text("This is to certify that", { align: "center" });
 
     doc.moveDown(0.8);
+    doc.moveDown(0.5);
 
     // Member Name
     doc
       .font("Helvetica-Bold")
       .fontSize(28)
+      .fontSize(26)
       .fillColor("#111827")
       .text(member.fullName, { align: "center" });
 
     doc.moveDown(0.8);
+    doc.moveDown(0.5);
 
     doc
       .font("Helvetica")
@@ -979,6 +1013,7 @@ export const issueMembershipCertificate = async (req, res) => {
       );
 
     doc.moveDown(2);
+    doc.moveDown(1.5);
 
     // 5. Details Box
     const detailsY = doc.y;
