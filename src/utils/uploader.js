@@ -113,3 +113,20 @@ export const uploadToCloudinary = (file, folder) => {
     }
   });
 };
+
+export const uploadBufferWithPublicId = (buffer, fileName, folder) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: folder,
+        resource_type: "auto",
+        public_id: fileName,
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result.secure_url);
+      }
+    );
+    uploadStream.end(buffer);
+  });
+};
