@@ -58,4 +58,7 @@ router.put("/member/read", requireAuth, markMemberNotificationsAsRead);
 // GENERIC ROUTES (Must be last to avoid conflict with specific routes like /admin/read)
 router.put("/:id/read", requireAuth, markNotificationAsRead);
 
+// GENERIC NOTIFICATION ROUTES (Must be last to avoid conflicts)
+router.put("/:id/read", requireAuth, markNotificationAsRead);
+
 export default router;

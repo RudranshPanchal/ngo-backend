@@ -105,6 +105,9 @@ export const markNotificationAsRead = async (req, res) => {
 // Get volunteer notifications
 export const getVolunteerNotifications = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
     const notifications = await Notification.find({
       userType: "volunteer",
       $or: [
@@ -122,12 +125,16 @@ export const getVolunteerNotifications = async (req, res) => {
 // Mark volunteer notifications as read
 export const markVolunteerNotificationsAsRead = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
     await Notification.updateMany(
       { userType: "volunteer", userId: req.user._id, read: false },
       { $set: { read: true } },
     );
     res.json({ success: true });
   } catch (error) {
+    console.error("Error marking volunteer notifications as read:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
