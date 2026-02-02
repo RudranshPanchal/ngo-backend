@@ -147,13 +147,17 @@ BEGIN REPORT GENERATION NOW:
 `;
     // ===== OPTIMIZED AI CALL =====
     const completion = await openai.chat.completions.create({
-      model: "google/gemma-3-27b-it:free", // Better for structured reporting
+      // model: "google/gemma-3-27b-it:free", // Better for structured reporting
+      // model: "meta-llama/llama-3.3-70b-instruct:free",
+      model: "openai/gpt-oss-120b:free",
+
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
       temperature: 0.1, // Lower for more consistency
-      max_tokens: 3500,
+      max_tokens: 2500,
+      // max_tokens: 3500,
       top_p: 0.95,
       // frequency_penalty: 0.3,
       // presence_penalty: 0.2,

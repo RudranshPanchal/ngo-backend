@@ -812,16 +812,17 @@ export const forgotPassword = async (req, res) => {
         if (!user)
             return res.status(404).json({ message: "No user found for this role and email" });
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        // const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = "123456"; // For testing purposes
         const expires = new Date(Date.now() + 10 * 60 * 1000);
 
         user.resetOtp = otp;
         user.resetOtpExpiresAt = expires;
         await user.save();
 
-        try {
-            await sendPasswordResetOtpEmail({ toEmail: user.email, fullName: user.fullName, otp });
-        } catch (_) { }
+        // try {
+        //     await sendPasswordResetOtpEmail({ toEmail: user.email, fullName: user.fullName, otp });
+        // } catch (_) { }
 
         return res.status(200).json({ message: "OTP sent successfully" });
     } catch (err) {

@@ -1,6 +1,7 @@
 import Task from "../model/Task/task.js";
 import User from "../model/Auth/auth.js";
 import { calculateVolunteerLevel } from "../utils/volunteerLevel.js";
+import eventCertificate from "../model/EventCertificate/eventCertificate.js";
 
 export const getVolunteerStatsService = async (userId) => {
   if (!userId) {
@@ -43,12 +44,18 @@ export const getVolunteerStatsService = async (userId) => {
   // 4. LEVEL
   const levelData = calculateVolunteerLevel(impactScore);
 
-  // 5. UPDATE USER (SIDE EFFECT — OK IN SERVICE)
+  // 5. CERTIFICATES EARNED
+  const certificatesEarned = await eventCertificate.countDocuments({
+    recipient: userId,
+  });
+
+  // 6. UPDATE USER (SIDE EFFECT — OK IN SERVICE)
   await User.findByIdAndUpdate(userId, {
     impactScore,
     hoursVolunteered: hoursContributed,
     volunteerLevel: levelData.level,
     volunteerLevelName: levelData.name,
+    certificatesEarned,
   });
 
   return {
@@ -59,6 +66,6 @@ export const getVolunteerStatsService = async (userId) => {
     impactScore,
     level: levelData.level,
     levelName: levelData.name,
-    certificatesEarned: 0,
+    certificatesEarned,
   };
 };
