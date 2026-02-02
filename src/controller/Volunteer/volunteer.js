@@ -109,22 +109,7 @@ export const getAllVolunteers = async (req, res) => {
     const volunteers = await Volunteer.find().sort({ createdAt: -1 });
     res.json({ success: true, volunteers });
   } catch (error) {
-    // Fallback demo data when DB is not available
-    const demoVolunteers = [
-      {
-        _id: '1',
-        fullName: 'Priya Sharma',
-        email: 'priya@example.com',
-        contactNumber: '+91 98765 43210',
-        skills: 'Teaching, Communication',
-        areaOfVolunteering: 'fieldWork',
-        availability: 'morning',
-        status: 'approved',
-        volunteerId: 'VOL0001',
-        createdAt: new Date().toISOString()
-      }
-    ];
-    res.json({ success: true, volunteers: demoVolunteers });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -405,14 +390,14 @@ export const getVolunteerTasksById = async (req, res) => {
 
 export const getMyCertificates = async (req, res) => {
   try {
-    const userId = req.user._id; 
+    const userId = req.user._id;
 
-    const certificates = await EventCertificate.find({ 
+    const certificates = await EventCertificate.find({
       recipient: userId,
       // role: 'volunteer'
     })
-    .populate("event", "title eventDate category")
-    .sort({ createdAt: -1 });
+      .populate("event", "title eventDate category")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
