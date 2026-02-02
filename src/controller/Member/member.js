@@ -89,14 +89,11 @@ export const registerMember = async (req, res) => {
     }
 
     // 🔒 Verify Phone OTP (Must be verified via /api/auth/verify-phone-otp)
-    const phoneOtpRecord = await PhoneOtp.findOne({
-      contactNumber: body.contactNumber,
-    });
+    const phoneOtpRecord = await PhoneOtp.findOne({ contactNumber: body.contactNumber });
     if (!phoneOtpRecord || phoneOtpRecord.verified !== true) {
       return res.status(400).json({
         success: false,
-        message:
-          "Phone number not verified. Please verify your phone number first.",
+        message: "Phone number not verified. Please verify your phone number first.",
       });
     }
 
@@ -683,13 +680,10 @@ export const issueAppointmentLetter = async (req, res) => {
     const { id } = req.params;
     const { name, role, startDate, address } = req.body || {};
 
-    let member =
-      (await Member.findById(id)) || (await Member.findOne({ memberId: id }));
+    let member = (await Member.findById(id)) || (await Member.findOne({ memberId: id }));
 
     if (!member) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Member not found" });
+      return res.status(404).json({ success: false, message: "Member not found" });
     }
 
     const doc = new PDFDocument({ size: "A4", margin: 0 });
@@ -698,26 +692,11 @@ export const issueAppointmentLetter = async (req, res) => {
 
     const fontPath = path.join(process.cwd(), "assets", "fonts");
     // Fonts registration (keeping your existing logic)
-    doc.registerFont(
-      "GreatVibes",
-      path.join(fontPath, "GreatVibes-Regular.ttf"),
-    );
-    doc.registerFont(
-      "Playfair-Bold",
-      path.join(fontPath, "playfair-display.bold.ttf"),
-    );
-    doc.registerFont(
-      "OpenSans-Regular",
-      path.join(fontPath, "open-sans.regular.ttf"),
-    );
-    doc.registerFont(
-      "OpenSans-Bold",
-      path.join(fontPath, "open-sans.bold.ttf"),
-    );
-    doc.registerFont(
-      "DancingScript",
-      path.join(fontPath, "dancing-script.regular.ttf"),
-    );
+    doc.registerFont("GreatVibes", path.join(fontPath, "GreatVibes-Regular.ttf"));
+    doc.registerFont("Playfair-Bold", path.join(fontPath, "playfair-display.bold.ttf"));
+    doc.registerFont("OpenSans-Regular", path.join(fontPath, "open-sans.regular.ttf"));
+    doc.registerFont("OpenSans-Bold", path.join(fontPath, "open-sans.bold.ttf"));
+    doc.registerFont("DancingScript", path.join(fontPath, "dancing-script.regular.ttf"));
 
     const PRIMARY = "#4F46E5";
     const GOLD = "#D4AF37";
@@ -728,7 +707,7 @@ export const issueAppointmentLetter = async (req, res) => {
     const pageHeight = doc.page.height;
 
     // --- NEW ALIGNMENT CONSTANTS ---
-    const PAGE_MARGIN = 50;
+    const PAGE_MARGIN = 50; 
     const RIGHT_BOUNDARY = pageWidth - PAGE_MARGIN; // 545 approx
     const LEFT_BOUNDARY = PAGE_MARGIN;
     const RIGHT_COL_WIDTH = 200; // Right side text boxes ki width
@@ -736,256 +715,90 @@ export const issueAppointmentLetter = async (req, res) => {
     // 1. Background & Border (Keeping your 20 margin for border)
     doc.rect(0, 0, pageWidth, pageHeight).fill("#FFFFFF");
     const borderMargin = 20;
-    doc
-      .lineWidth(3)
-      .strokeColor(PRIMARY)
-      .rect(
-        borderMargin,
-        borderMargin,
-        pageWidth - borderMargin * 2,
-        pageHeight - borderMargin * 2,
-      )
-      .stroke();
-    doc
-      .lineWidth(1)
-      .strokeColor(GOLD)
-      .rect(
-        borderMargin + 6,
-        borderMargin + 6,
-        pageWidth - (borderMargin * 2 + 12),
-        pageHeight - (borderMargin * 2 + 12),
-      )
-      .stroke();
+    doc.lineWidth(3).strokeColor(PRIMARY).rect(borderMargin, borderMargin, pageWidth - borderMargin * 2, pageHeight - borderMargin * 2).stroke();
+    doc.lineWidth(1).strokeColor(GOLD).rect(borderMargin + 6, borderMargin + 6, pageWidth - (borderMargin * 2 + 12), pageHeight - (borderMargin * 2 + 12)).stroke();
 
     // 2. Header
-    if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, LEFT_BOUNDARY, 45, { width: 50 });
-    }
+    if (fs.existsSync(logoPath)) { doc.image(logoPath, LEFT_BOUNDARY, 45, { width: 50 }); }
 
-    doc
-      .font("Playfair-Bold")
-      .fontSize(24)
-      .fillColor(PRIMARY)
-      .text("ORBOSIS FOUNDATION", LEFT_BOUNDARY + 60, 45);
-    doc
-      .font("OpenSans-Regular")
-      .fontSize(10)
-      .fillColor(TEXT_LIGHT)
-      .text(
-        "Empowering Communities, Transforming Lives",
-        LEFT_BOUNDARY + 60,
-        75,
-      );
+    doc.font("Playfair-Bold").fontSize(24).fillColor(PRIMARY).text("ORBOSIS FOUNDATION", LEFT_BOUNDARY + 60, 45);
+    doc.font("OpenSans-Regular").fontSize(10).fillColor(TEXT_LIGHT).text("Empowering Communities, Transforming Lives", LEFT_BOUNDARY + 60, 75);
 
     // Fixed Contact Info (Right Aligned)
     const contactX = RIGHT_BOUNDARY - RIGHT_COL_WIDTH;
     doc.font("OpenSans-Regular").fontSize(9).fillColor(TEXT_MAIN);
-    doc.text("123 NGO Street, Social City", contactX, 45, {
-      align: "right",
-      width: RIGHT_COL_WIDTH,
-    });
-    doc.text("India - 452001", contactX, 58, {
-      align: "right",
-      width: RIGHT_COL_WIDTH,
-    });
-    doc.text("contact@orbosis.org", contactX, 71, {
-      align: "right",
-      width: RIGHT_COL_WIDTH,
-    });
-    doc.text("+91 98765 43210", contactX, 84, {
-      align: "right",
-      width: RIGHT_COL_WIDTH,
-    });
+    doc.text("123 NGO Street, Social City", contactX, 45, { align: "right", width: RIGHT_COL_WIDTH });
+    doc.text("India - 452001", contactX, 58, { align: "right", width: RIGHT_COL_WIDTH });
+    doc.text("contact@orbosis.org", contactX, 71, { align: "right", width: RIGHT_COL_WIDTH });
+    doc.text("+91 98765 43210", contactX, 84, { align: "right", width: RIGHT_COL_WIDTH });
 
     // Divider Line (Dynamic Length)
-    doc
-      .moveTo(LEFT_BOUNDARY, 105)
-      .lineTo(RIGHT_BOUNDARY, 105)
-      .lineWidth(1)
-      .strokeColor(GOLD)
-      .stroke();
+    doc.moveTo(LEFT_BOUNDARY, 105).lineTo(RIGHT_BOUNDARY, 105).lineWidth(1).strokeColor(GOLD).stroke();
 
     // 3. Ref No & Date
     let currentY = 135;
-    const today = new Date().toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-    doc
-      .font("OpenSans-Bold")
-      .fontSize(10)
-      .fillColor(TEXT_MAIN)
-      .text(`Ref No: OF/MEM/${member.memberId}`, LEFT_BOUNDARY, currentY);
-    doc.text(`Date: ${today}`, RIGHT_BOUNDARY - RIGHT_COL_WIDTH, currentY, {
-      width: RIGHT_COL_WIDTH,
-      align: "right",
-    });
+    const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+    doc.font("OpenSans-Bold").fontSize(10).fillColor(TEXT_MAIN).text(`Ref No: OF/MEM/${member.memberId}`, LEFT_BOUNDARY, currentY);
+    doc.text(`Date: ${today}`, RIGHT_BOUNDARY - RIGHT_COL_WIDTH, currentY, { width: RIGHT_COL_WIDTH, align: "right" });
 
     // 4. Recipient Details
     currentY += 40;
     const recipientName = name || member.fullName || "Member";
     doc.font("OpenSans-Bold").fontSize(11).text("To,", LEFT_BOUNDARY, currentY);
     currentY += 20;
-    doc
-      .font("Playfair-Bold")
-      .fontSize(14)
-      .fillColor(PRIMARY)
-      .text(recipientName, LEFT_BOUNDARY, currentY);
+    doc.font("Playfair-Bold").fontSize(14).fillColor(PRIMARY).text(recipientName, LEFT_BOUNDARY, currentY);
     currentY += 22;
-    doc
-      .font("OpenSans-Regular")
-      .fontSize(10)
-      .fillColor(TEXT_MAIN)
-      .text(
-        address || member.address || "Address not provided",
-        LEFT_BOUNDARY,
-        currentY,
-        { width: 250 },
-      );
+    doc.font("OpenSans-Regular").fontSize(10).fillColor(TEXT_MAIN).text((address || member.address || "Address not provided"), LEFT_BOUNDARY, currentY, { width: 250 });
 
     // 5. Subject
     currentY += 60;
-    doc
-      .font("OpenSans-Bold")
-      .fontSize(12)
-      .fillColor(TEXT_MAIN)
-      .text("SUBJECT: APPOINTMENT LETTER", 0, currentY, {
-        align: "center",
-        underline: true,
-      });
+    doc.font("OpenSans-Bold").fontSize(12).fillColor(TEXT_MAIN).text("SUBJECT: APPOINTMENT LETTER", 0, currentY, { align: "center", underline: true });
 
     // 6. Body Content
     currentY += 50;
-    const startDateStr = new Date(
-      startDate || member.approvedAt || new Date(),
-    ).toLocaleDateString("en-GB");
-    const bodyOptions = {
-      align: "justify",
-      width: pageWidth - PAGE_MARGIN * 2,
-      lineGap: 5,
-    };
+    const startDateStr = new Date(startDate || member.approvedAt || new Date()).toLocaleDateString("en-GB");
+    const bodyOptions = { align: "justify", width: pageWidth - (PAGE_MARGIN * 2), lineGap: 5 };
 
-    doc
-      .font("OpenSans-Regular")
-      .fontSize(11)
-      .text(`Dear ${recipientName},`, LEFT_BOUNDARY, currentY);
+    doc.font("OpenSans-Regular").fontSize(11).text(`Dear ${recipientName},`, LEFT_BOUNDARY, currentY);
     currentY += 30;
-    doc.text(
-      `We are pleased to inform you that you have been appointed as a ${role || "Member"} of Orbosis Foundation, effective from ${startDateStr}. We were very impressed with your background and believe that your skills and experience will be a valuable asset to our organization.`,
-      LEFT_BOUNDARY,
-      currentY,
-      bodyOptions,
-    );
-
+    doc.text(`We are pleased to inform you that you have been appointed as a ${role || "Member"} of Orbosis Foundation, effective from ${startDateStr}. We were very impressed with your background and believe that your skills and experience will be a valuable asset to our organization.`, LEFT_BOUNDARY, currentY, bodyOptions);
+    
     currentY = doc.y + 15;
-    doc.text(
-      "As a member, you will play a vital role in our mission to empower communities and transform lives. We look forward to your active participation and contribution to our various initiatives and programs.",
-      LEFT_BOUNDARY,
-      currentY,
-      bodyOptions,
-    );
-
+    doc.text("As a member, you will play a vital role in our mission to empower communities and transform lives. We look forward to your active participation and contribution to our various initiatives and programs.", LEFT_BOUNDARY, currentY, bodyOptions);
+    
     currentY = doc.y + 15;
-    doc.text(
-      "This appointment is subject to the rules and regulations of the foundation. We trust that you will perform your duties with the highest level of integrity and dedication.",
-      LEFT_BOUNDARY,
-      currentY,
-      bodyOptions,
-    );
+    doc.text("This appointment is subject to the rules and regulations of the foundation. We trust that you will perform your duties with the highest level of integrity and dedication.", LEFT_BOUNDARY, currentY, bodyOptions);
 
     // 7. Signatures (Balanced)
     currentY = doc.y + 60;
     const sigY = currentY;
 
     // Left Signature
-    doc
-      .font("OpenSans-Bold")
-      .fontSize(10)
-      .text("Accepted By:", LEFT_BOUNDARY, sigY);
-    doc
-      .font("DancingScript")
-      .fontSize(18)
-      .text(recipientName, LEFT_BOUNDARY, sigY + 25);
-    doc
-      .font("OpenSans-Regular")
-      .fontSize(10)
-      .text(`(${recipientName})`, LEFT_BOUNDARY, sigY + 50);
+    doc.font("OpenSans-Bold").fontSize(10).text("Accepted By:", LEFT_BOUNDARY, sigY);
+    doc.font("DancingScript").fontSize(18).text(recipientName, LEFT_BOUNDARY, sigY + 25);
+    doc.font("OpenSans-Regular").fontSize(10).text(`(${recipientName})`, LEFT_BOUNDARY, sigY + 50);
 
     // Right Signature (Fixed Aligment)
     const rightSigX = RIGHT_BOUNDARY - RIGHT_COL_WIDTH;
-    doc
-      .font("OpenSans-Bold")
-      .fontSize(10)
-      .text("For Orbosis Foundation", rightSigX, sigY, {
-        width: RIGHT_COL_WIDTH,
-        align: "right",
-      });
-    doc
-      .font("DancingScript")
-      .fontSize(20)
-      .text("Authorized Signatory", rightSigX, sigY + 25, {
-        width: RIGHT_COL_WIDTH,
-        align: "right",
-      });
-    doc
-      .font("OpenSans-Regular")
-      .fontSize(10)
-      .text("Authorized Signatory", rightSigX, sigY + 50, {
-        width: RIGHT_COL_WIDTH,
-        align: "right",
-      });
+    doc.font("OpenSans-Bold").fontSize(10).text("For Orbosis Foundation", rightSigX, sigY, { width: RIGHT_COL_WIDTH, align: "right" });
+    doc.font("DancingScript").fontSize(20).text("Authorized Signatory", rightSigX, sigY + 25, { width: RIGHT_COL_WIDTH, align: "right" });
+    doc.font("OpenSans-Regular").fontSize(10).text("Authorized Signatory", rightSigX, sigY + 50, { width: RIGHT_COL_WIDTH, align: "right" });
 
     // 8. Footer
     const footerY = pageHeight - 50;
-    doc
-      .lineWidth(1)
-      .strokeColor(GOLD)
-      .moveTo(LEFT_BOUNDARY, footerY)
-      .lineTo(RIGHT_BOUNDARY, footerY)
-      .stroke();
-    doc
-      .font("OpenSans-Regular")
-      .fontSize(9)
-      .fillColor(TEXT_LIGHT)
-      .text(
-        "www.orbosisfoundation.org | Reg. No: 12345/2023",
-        0,
-        footerY + 10,
-        { align: "center" },
-      );
+    doc.lineWidth(1).strokeColor(GOLD).moveTo(LEFT_BOUNDARY, footerY).lineTo(RIGHT_BOUNDARY, footerY).stroke();
+    doc.font("OpenSans-Regular").fontSize(9).fillColor(TEXT_LIGHT).text("www.orbosisfoundation.org | Reg. No: 12345/2023", 0, footerY + 10, { align: "center" });
 
     doc.end();
-    const pdfBuffer = await new Promise((resolve) => {
-      doc.on("end", () => resolve(Buffer.concat(buffers)));
-    });
+    const pdfBuffer = await new Promise((resolve) => { doc.on("end", () => resolve(Buffer.concat(buffers))); });
 
     // ... baaki ka Cloudinary aur Database logic (same as before)
-    let cloudinaryUrl = await uploadBufferToCloudinary(
-      pdfBuffer,
-      `Appointment_Letter_${member.memberId}`,
-      "member_docs/appointment_letters",
-    );
+    let cloudinaryUrl = await uploadBufferToCloudinary(pdfBuffer, `Appointment_Letter_${member.memberId}`, "member_docs/appointment_letters");
 
-    const updatedMember = await Member.findByIdAndUpdate(
-      member._id,
-      {
-        $set: {
-          appointmentLetterIssued: true,
-          appointmentLetterCloudinaryUrl: cloudinaryUrl,
-          appointmentLetterPDF: pdfBuffer,
-          appointmentLetterDate: new Date(),
-        },
-      },
-      { new: true },
-    );
+    await Member.findByIdAndUpdate(member._id, { $set: { appointmentLetterIssued: true, appointmentLetterCloudinaryUrl: cloudinaryUrl, appointmentLetterPDF: pdfBuffer, appointmentLetterDate: new Date() } });
 
-    return res.json({
-      success: true,
-      message: "Appointment Letter issued successfully",
-      url: cloudinaryUrl,
-      member: updatedMember,
-    });
+    return res.json({ success: true, message: "Appointment Letter issued successfully", url: cloudinaryUrl });
+
   } catch (err) {
     console.error("issueAppointmentLetter ERROR:", err);
     return res.status(500).json({ success: false, message: err.message });
@@ -1469,13 +1282,13 @@ export const approveMember = async (req, res) => {
     member.approvedAt = new Date();
     await member.save();
 
-    // try {
-    //   await sendEmail(
-    //     member.email,
-    //     "Membership Approved",
-    //     "Your membership has been approved.",
-    //   );
-    // } catch (e) {}
+    try {
+      await sendEmail(
+        member.email,
+        "Membership Approved",
+        "Your membership has been approved.",
+      );
+    } catch (e) {}
 
     res.json({ success: true, member });
   } catch (err) {
@@ -1520,13 +1333,12 @@ export const getMyProfile = async (req, res) => {
 /* GET ALL*/
 export const getAllMembers = async (req, res) => {
   try {
-    const members = await Member.find()
-      // .select("-appointmentLetterPDF -idCardPDF -membershipCertificatePDF")
-      .sort({ createdAt: -1 })
-      // .lean();
+    console.log("📢 Fetching all members...");
+    const members = await Member.find().sort({ createdAt: -1 });
     res.json({ success: true, members });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("❌ getAllMembers Error:", err);
+    res.status(500).json({ success: false, members: [] });
   }
 };
 
