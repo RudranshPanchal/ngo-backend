@@ -22,10 +22,12 @@ router.put("/admin/read", requireAuth, requireAdmin, markAllAsRead);
 
 // MEMBER NOTIFICATIONS
 router.get("/member", requireAuth, getMemberNotifications);
-router.put("/:id/read", requireAuth, markNotificationAsRead);
 
 // VOLUNTEER ROUTES
 router.get("/volunteer", requireAuth, requireVolunteer, getVolunteerNotifications);
 router.put("/volunteer/read", requireAuth, requireVolunteer, markVolunteerNotificationsAsRead);
+
+// GENERIC NOTIFICATION ROUTES (Must be last to avoid conflicts)
+router.put("/:id/read", requireAuth, markNotificationAsRead);
 
 export default router;
