@@ -1,5 +1,6 @@
 import Campaign from "../../model/Campaign/campaign.js";
 import Fundraising from "../../model/fundraising/fundraising.js";
+import Notification from "../../model/Notification/notification.js";
 import { sendEmail } from "../../utils/mail.js";
 import { uploadToCloudinary } from "../../utils/uploader.js";
 
@@ -47,6 +48,25 @@ export const createCampaign = async (req, res) => {
       documents: documentsUrl,
       status: "pending" // Default status
     });
+
+    // 🔔 NOTIFICATION LOGIC
+    try {
+      const newNotification = await Notification.create({
+        userType: "admin",
+        message: `New Campaign Request: ${req.body.campaignTitle || "Untitled"}`,
+        type: "campaign-request",
+        role: "fundraiser",
+        read: false,
+        relatedId: campaign._id
+      });
+
+      const io = req.app.get("io");
+      if (io) {
+        io.to("admins").emit("admin-notification", newNotification);
+      }
+    } catch (notifyErr) {
+      console.error("Notification Error:", notifyErr);
+    }
 
     res.status(201).json({
       success: true,
@@ -117,6 +137,35 @@ userId: campaign.userId,
     documents: campaign.documents,
   });
 
+  //  NOTIFICATION LOGIC (APPROVED)
+  try {
+    const newNotification = await Notification.create({
+      userId: campaign.userId,
+      message: `Your campaign "${campaign.campaignTitle}" has been approved!`,
+      type: "campaign-approved",
+      role: "fundraiser",
+      read: false,
+      relatedId: campaign._id
+    });
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(campaign.userId.toString()).emit("user-notification", newNotification);
+      
+      // 🔔 BROADCAST TO ALL USERS (Donors, Volunteers, Members)
+      const broadcastMsg = {
+        message: `New Campaign Alert: "${campaign.campaignTitle}" is now live!`,
+        type: "campaign-live",
+        read: false,
+        createdAt: new Date(),
+        redirectUrl: "/FundRaising"
+      };
+      io.emit("campaign-notification", broadcastMsg);
+    }
+  } catch (notifyErr) {
+    console.error("Notification Error:", notifyErr);
+  }
+
   return res.json({
     success: true,
     message: "Campaign approved & live on fundraising",
@@ -131,6 +180,25 @@ userId: campaign.userId,
       campaign.status = "rejected";
       campaign.adminRemark = adminRemark;
       await campaign.save();
+
+      // 🔔 NOTIFICATION LOGIC (REJECTED)
+      try {
+        const newNotification = await Notification.create({
+          userId: campaign.userId,
+          message: `Your campaign "${campaign.campaignTitle}" was rejected. Reason: ${adminRemark}`,
+          type: "campaign-rejected",
+          role: "fundraiser",
+          read: false,
+          relatedId: campaign._id
+        });
+
+        const io = req.app.get("io");
+        if (io) {
+          io.to(campaign.userId.toString()).emit("user-notification", newNotification);
+        }
+      } catch (notifyErr) {
+        console.error("Notification Error:", notifyErr);
+      }
 
       return res.json({
         success: true,
