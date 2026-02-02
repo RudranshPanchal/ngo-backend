@@ -74,7 +74,11 @@ export const markMemberNotificationsAsRead = async (req, res) => {
     if (member) targetIds.push(member._id);
 
     await Notification.updateMany(
-      { userType: "member", userId: { $in: targetIds }, read: false },
+      {
+        userType: "member",
+        $or: [{ userId: { $in: targetIds } }, { userId: null }],
+        read: false,
+      },
       { $set: { read: true } },
     );
 
@@ -129,7 +133,11 @@ export const markVolunteerNotificationsAsRead = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
     await Notification.updateMany(
-      { userType: "volunteer", userId: req.user._id, read: false },
+      {
+        userType: "volunteer",
+        $or: [{ userId: req.user._id }, { userId: null }],
+        read: false,
+      },
       { $set: { read: true } },
     );
     res.json({ success: true });
@@ -160,7 +168,11 @@ export const getDonorNotifications = async (req, res) => {
 export const markDonorNotificationsAsRead = async (req, res) => {
   try {
     await Notification.updateMany(
-      { userType: "donor", userId: req.user._id, read: false },
+      {
+        userType: "donor",
+        $or: [{ userId: req.user._id }, { userId: null }],
+        read: false,
+      },
       { $set: { read: true } },
     );
     res.json({ success: true });
