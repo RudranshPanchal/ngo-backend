@@ -201,8 +201,24 @@ export const issueAppointmentLetter = async (req, res) => {
     const pdfBuffer = await new Promise((resolve) => { doc.on("end", () => resolve(Buffer.concat(buffers))); });
 
     let cloudinaryUrl = await uploadBufferWithPublicId(pdfBuffer, `Appointment_Letter_${member.memberId}`, "member_docs/appointment_letters");
-    await Member.findByIdAndUpdate(member._id, { $set: { appointmentLetterIssued: true, appointmentLetterCloudinaryUrl: cloudinaryUrl, appointmentLetterPDF: pdfBuffer, appointmentLetterDate: new Date() } });
-    return res.json({ success: true, message: "Appointment Letter issued successfully", url: cloudinaryUrl });
+const updatedMember = await Member.findByIdAndUpdate(
+      member._id,
+      {
+        $set: {
+          appointmentLetterIssued: true,
+          appointmentLetterCloudinaryUrl: cloudinaryUrl,
+          appointmentLetterPDF: pdfBuffer,
+          appointmentLetterDate: new Date(),
+        },
+      },
+      { new: true }
+    );
+return res.json({
+      success: true,
+      message: "Appointment Letter issued successfully",
+      url: cloudinaryUrl,
+      member: updatedMember,
+    });
   } catch (err) { console.error("issueAppointmentLetter ERROR:", err); return res.status(500).json({ success: false, message: err.message }); }
 };
 

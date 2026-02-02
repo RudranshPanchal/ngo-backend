@@ -137,6 +137,23 @@ userId: campaign.userId,
     documents: campaign.documents,
   });
 
+  // 🔔 BROADCAST NOTIFICATION (To Donors, Volunteers, Members)
+  try {
+    const rolesToNotify = ["donor", "volunteer", "member"];
+    const broadcastNotifications = rolesToNotify.map(role => ({
+      userType: role,
+      userId: null, // Broadcast to all in this role
+      message: `New Campaign Alert: "${campaign.campaignTitle}" is now live!`,
+      type: "campaign-live",
+      role: role,
+      read: false,
+      redirectUrl: "/FundRaising"
+    }));
+    await Notification.insertMany(broadcastNotifications);
+  } catch (err) {
+    console.error("Broadcast Notification Error:", err);
+  }
+
   //  NOTIFICATION LOGIC (APPROVED)
   try {
     const newNotification = await Notification.create({
@@ -180,6 +197,22 @@ userId: campaign.userId,
       campaign.status = "rejected";
       campaign.adminRemark = adminRemark;
       await campaign.save();
+
+      // 🔔 BROADCAST REJECTION (To Donors, Volunteers, Members - as requested)
+      try {
+        const rolesToNotify = ["donor", "volunteer", "member"];
+        const broadcastNotifications = rolesToNotify.map(role => ({
+          userType: role,
+          userId: null, // Broadcast
+          message: `Campaign Rejected: "${campaign.campaignTitle}"`,
+          type: "campaign-rejected",
+          role: role,
+          read: false,
+        }));
+        await Notification.insertMany(broadcastNotifications);
+      } catch (err) {
+        console.error("Broadcast Rejection Error:", err);
+      }
 
       // 🔔 NOTIFICATION LOGIC (REJECTED)
       try {
