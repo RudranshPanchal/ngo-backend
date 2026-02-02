@@ -184,11 +184,11 @@ export const registerMember = async (req, res) => {
     }
 
     // Send Email (Non-blocking to reduce response time)
-    sendEmail(
-      member.email,
-      "Membership Application Received",
-      `Thank you ${member.fullName}. Your ID: ${member.memberId}`,
-    ).catch((e) => console.error("Email sending failed:", e));
+    // sendEmail(
+    //   member.email,
+    //   "Membership Application Received",
+    //   `Thank you ${member.fullName}. Your ID: ${member.memberId}`,
+    // ).catch((e) => console.error("Email sending failed:", e));
 
     return res.status(201).json({
       success: true,
@@ -1282,13 +1282,13 @@ export const approveMember = async (req, res) => {
     member.approvedAt = new Date();
     await member.save();
 
-    try {
-      await sendEmail(
-        member.email,
-        "Membership Approved",
-        "Your membership has been approved.",
-      );
-    } catch (e) {}
+    // try {
+    //   await sendEmail(
+    //     member.email,
+    //     "Membership Approved",
+    //     "Your membership has been approved.",
+    //   );
+    // } catch (e) {}
 
     res.json({ success: true, member });
   } catch (err) {
@@ -1475,17 +1475,17 @@ export const updateMemberStatus = async (req, res) => {
       }
 
       // Send Welcome Email
-      try {
-        await sendMemberWelcomeEmail({
-          toEmail: member.email,
-          fullName: member.fullName,
-          email: member.email,
-          password,
-          memberId: member.memberId,
-        });
-      } catch (e) {
-        console.error("Email error", e);
-      }
+      // try {
+      //   await sendMemberWelcomeEmail({
+      //     toEmail: member.email,
+      //     fullName: member.fullName,
+      //     email: member.email,
+      //     password,
+      //     memberId: member.memberId,
+      //   });
+      // } catch (e) {
+      //   console.error("Email error", e);
+      // }
 
       // 🔔 Send Notification & Migrate Orphaned Notifications
       try {
@@ -1533,7 +1533,7 @@ ${reason}
 If you believe this is a mistake, you may contact our support team.
 `;
       try {
-        await sendEmail(member.email, subject, message);
+        // await sendEmail(member.email, subject, message);
       } catch (e) {
         console.error("Email error", e);
       }
