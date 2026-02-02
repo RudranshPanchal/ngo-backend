@@ -40,7 +40,7 @@ export const uploadToCloudinary = (file, folder) => {
       const dataUri = `data:application/pdf;base64,${file.toString("base64")}`;
       const uploadOptions = {
         folder,
-        resource_type: "auto"
+        resource_type: "raw"
       };
 
       cloudinary.uploader.upload(dataUri, uploadOptions, (error, result) => {
