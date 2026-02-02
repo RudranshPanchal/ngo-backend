@@ -275,6 +275,35 @@ export const updateEvent = async (req, res) => {
       { new: true, runValidators: true },
     );
 
+    // 🔔 NOTIFY PARTICIPANTS & APPLICANTS
+    try {
+      const recipients = [...(updatedEvent.participants || []), ...(updatedEvent.applicants || [])];
+      const uniqueRecipients = [...new Set(recipients.map(id => id.toString()))];
+
+      if (uniqueRecipients.length > 0) {
+        const notifications = uniqueRecipients.map(uid => ({
+          userType: "volunteer",
+          userId: uid,
+          title: "Event Updated",
+          message: `Event "${updatedEvent.title}" has been updated.`,
+          type: "event_update",
+          role: "volunteer",
+          read: false,
+        }));
+
+        const createdNotifications = await Notification.insertMany(notifications);
+        const io = req.app.get("io");
+        if (io) {
+          createdNotifications.forEach(notif => {
+            io.to(`volunteer-${notif.userId}`).emit("volunteer-notification", notif);
+            io.to(`user-${notif.userId}`).emit("user-notification", notif);
+          });
+        }
+      }
+    } catch (notifError) {
+      console.error("Notification failed:", notifError);
+    }
+
     res.status(200).json({
       success: true,
       message: "Event updated successfully",
@@ -322,6 +351,7 @@ export const registerForEvent = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user._id;
+    const user = await User.findById(userId);
 
     const event = await Event.findById(id);
     if (!event || event.isDeleted) {
@@ -363,6 +393,24 @@ export const registerForEvent = async (req, res) => {
 
     await event.save();
 
+    // 🔔 NOTIFY ADMIN
+    try {
+      const newNotification = await Notification.create({
+        userType: "admin",
+        message: `Volunteer ${user?.fullName || "User"} applied for event: ${event.title}`,
+        type: "event_application",
+        role: "volunteer",
+        read: false
+      });
+
+      const io = req.app.get("io");
+      if (io) {
+        io.to("admins").emit("admin-notification", newNotification);
+      }
+    } catch (notifError) {
+      console.error("Notification failed:", notifError);
+    }
+
     res.status(200).json({
       success: true,
       message: "Successfully applied for event. Pending approval.",
@@ -380,6 +428,7 @@ export const unregisterFromEvent = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user._id;
+    const user = await User.findById(userId);
 
     const event = await Event.findById(id);
     if (!event || event.isDeleted) {
@@ -416,6 +465,24 @@ export const unregisterFromEvent = async (req, res) => {
     }
 
     await event.save();
+
+    // 🔔 NOTIFY ADMIN
+    try {
+      const newNotification = await Notification.create({
+        userType: "admin",
+        message: `Volunteer ${user?.fullName || "User"} withdrew from event: ${event.title}`,
+        type: "event_withdrawal",
+        role: "volunteer",
+        read: false
+      });
+
+      const io = req.app.get("io");
+      if (io) {
+        io.to("admins").emit("admin-notification", newNotification);
+      }
+    } catch (notifError) {
+      console.error("Notification failed:", notifError);
+    }
 
     res.status(200).json({
       success: true,
@@ -513,6 +580,27 @@ export const rejectApplicant = async (req, res) => {
     if (event.applicants) {
       event.applicants.pull(userId);
       await event.save();
+    }
+
+    // 🔔 NOTIFY VOLUNTEER
+    try {
+      const newNotification = await Notification.create({
+        userType: "volunteer",
+        userId: userId,
+        title: "Application Rejected",
+        message: `Your application for event "${event.title}" was rejected.`,
+        type: "event_rejection",
+        role: "volunteer",
+        read: false
+      });
+
+      const io = req.app.get("io");
+      if (io) {
+        io.to(`volunteer-${userId}`).emit("volunteer-notification", newNotification);
+        io.to(`user-${userId}`).emit("user-notification", newNotification);
+      }
+    } catch (notifError) {
+      console.error("Notification failed:", notifError);
     }
 
     res.status(200).json({

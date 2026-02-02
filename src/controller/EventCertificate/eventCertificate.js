@@ -635,7 +635,7 @@ export const generateEventCertificate = async (req, res) => {
             // A. Save Notification to Database (So it shows up on refresh)
             const newNotification = await notification.create({
                 userType: "volunteer",
-                userId: newCertificate.recipient, 
+                userId: userId, 
                 title: "New Certificate Generated",
                 message: `You have been issued a certificate for event: ${event.title}`,
                 type: "certificate_generated",
@@ -647,7 +647,7 @@ export const generateEventCertificate = async (req, res) => {
             const io = req.app.get("io"); // Get the socket instance
             if (io) {
                 // Emit to the specific volunteer's room we set up in Step 1
-                io.to(`volunteer-${newCertificate.assignedTo}`).emit("volunteer-notification", newNotification);
+                io.to(`volunteer-${userId}`).emit("volunteer-notification", newNotification);
                 console.log("Socket notification sent to volunteer");
             }
         } catch (notifError) {
