@@ -795,25 +795,9 @@ export const issueAppointmentLetter = async (req, res) => {
     // ... baaki ka Cloudinary aur Database logic (same as before)
     let cloudinaryUrl = await uploadBufferToCloudinary(pdfBuffer, `Appointment_Letter_${member.memberId}`, "member_docs/appointment_letters");
 
-    const updatedMember = await Member.findByIdAndUpdate(
-      member._id,
-      {
-        $set: {
-          appointmentLetterIssued: true,
-          appointmentLetterCloudinaryUrl: cloudinaryUrl,
-          appointmentLetterPDF: pdfBuffer,
-          appointmentLetterDate: new Date(),
-        },
-      },
-      { new: true }
-    );
+    await Member.findByIdAndUpdate(member._id, { $set: { appointmentLetterIssued: true, appointmentLetterCloudinaryUrl: cloudinaryUrl, appointmentLetterPDF: pdfBuffer, appointmentLetterDate: new Date() } });
 
-    return res.json({
-      success: true,
-      message: "Appointment Letter issued successfully",
-      url: cloudinaryUrl,
-      member: updatedMember,
-    });
+    return res.json({ success: true, message: "Appointment Letter issued successfully", url: cloudinaryUrl });
 
   } catch (err) {
     console.error("issueAppointmentLetter ERROR:", err);
