@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // import Member from "../../model/Member/member.js";
 // import User from "../../model/Auth/auth.js";
 // import Certificate from "../../model/Certificate/certificate.js";
@@ -1867,6 +1868,8 @@
 //       .json({ success: false, message: "Server error", error: err.message });
 //   }
 // };
+=======
+>>>>>>> 1d31a25937864e1de3f105527c2e0928eef132fe
 export * from "./memberProfile.js";
 export * from "./memberAdmin.js";
 export * from "./memberDocuments.js";
