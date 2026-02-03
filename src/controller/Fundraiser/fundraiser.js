@@ -295,17 +295,17 @@ export const updateFundraiserStatus = async (req, res) => {
       fundraiser.approvedAt = new Date();
       await fundraiser.save();
 
-      try {
-          await sendFundraiserWelcomeEmail({
-              toEmail: fundraiser.email,
-              fullName: fundraiser.fullName,
-              email: fundraiser.email,
-              password: generatedPassword,
-              memberId: user.memberId
-          });
-      } catch (emailErr) {
-          console.error("Failed to send welcome email:", emailErr);
-      }
+      // try {
+      //     await sendFundraiserWelcomeEmail({
+      //         toEmail: fundraiser.email,
+      //         fullName: fundraiser.fullName,
+      //         email: fundraiser.email,
+      //         password: generatedPassword,
+      //         memberId: user.memberId
+      //     });
+      // } catch (emailErr) {
+      //     console.error("Failed to send welcome email:", emailErr);
+      // }
     } else if (status === "rejected") {
         fundraiser.status = "rejected";
         fundraiser.adminRemark = adminRemark;

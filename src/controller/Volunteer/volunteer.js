@@ -828,6 +828,17 @@ export const updateVolunteerStatus = async (req, res) => {
     volunteer.status = status;
     await volunteer.save();
 
+    // Block logic
+    if (status === "blocked") {
+      await User.findOneAndUpdate(
+        { email: volunteer.email },
+        { isBlocked: true,
+          tempPassword: false
+         }
+      );
+      return res.json({ success: true, message: "Volunteer and User login blocked successfully", volunteer });
+    }
+
     // Only proceed if approved
     if (status !== "approved") {
       return res.json({ success: true, volunteer });
@@ -847,6 +858,7 @@ export const updateVolunteerStatus = async (req, res) => {
       user.role = "volunteer";
       user.volunteerRef = volunteer._id;
 
+      user.isBlocked = false;
       user.fullName = volunteer.fullName;
       user.contactNumber = volunteer.contactNumber || "";
       user.address = volunteer.address || "";
@@ -866,8 +878,8 @@ export const updateVolunteerStatus = async (req, res) => {
       user.profilePhoto = volunteer.profilePhoto || "";
 
       // SYSTEM PASSWORD
-      user.password = hashedPassword;
-      user.tempPassword = true;
+      // user.password = hashedPassword;
+      // user.tempPassword = true;
 
       user.emailVerified = volunteer.isEmailVerified === true;
       user.phoneVerified = volunteer.isPhoneVerified === true;
