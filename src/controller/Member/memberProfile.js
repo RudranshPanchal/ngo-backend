@@ -183,5 +183,3 @@ export const getMyProfile = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
-// ... (updateMemberProfile and updateMemberDocuments logic can also be here, omitted for brevity but included in final export)
