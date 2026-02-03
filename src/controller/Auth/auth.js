@@ -156,12 +156,6 @@ export const login = async (req, res) => {
         // 1️⃣ Strategy 1: Exact Match (Best Performance)
         let user = await User.findOne({ email: email }).select('+password +isBlocked +role');
 
-        console.log("DB User Data:", {
-            email: user.email,
-            isBlocked: user.isBlocked,
-            tempPassword: user.tempPassword
-        });
-
         // 2️⃣ Strategy 2: Case-Insensitive Match (If exact match fails)
         if (!user) {
             const escapedEmail = escapeRegExp(email);
