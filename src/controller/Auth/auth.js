@@ -553,16 +553,16 @@ export const createMemberByAdmin = async (req, res) => {
         });
 
         // Send welcome email with credentials (best-effort)
-        try {
-            await sendMemberWelcomeEmail({
-                toEmail: email,
-                fullName,
-                email,
-                password
-            });
-        } catch (mailErr) {
-            // Do not fail the request if mail fails
-        }
+        // try {
+        //     await sendMemberWelcomeEmail({
+        //         toEmail: email,
+        //         fullName,
+        //         email,
+        //         password
+        //     });
+        // } catch (mailErr) {
+        //     // Do not fail the request if mail fails
+        // }
 
         res.status(201).json({
             message: "Member created successfully",
