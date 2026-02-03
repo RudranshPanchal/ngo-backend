@@ -33,7 +33,7 @@ const volunteerSchema = new mongoose.Schema({
     },
     emergencyContactNumber: { type: String, required: true },
     uploadIdProof: { type: String },
-    status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
+    status: { type: String, enum: ["pending", "approved", "rejected", "blocked"], default: "pending" },
     volunteerId: { type: String, unique: true, index: true },
     // Nayi fields verification track karne ke liye
     isEmailVerified: {

@@ -14,7 +14,7 @@ import PhoneOtp from "../../model/PhoneOtp/PhoneOtp.js";
 import Notification from "../../model/Notification/notification.js";
 
 function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 
@@ -154,19 +154,31 @@ export const login = async (req, res) => {
         }
 
         // 1️⃣ Strategy 1: Exact Match (Best Performance)
-        let user = await User.findOne({ email: email }).select('+password');
+        let user = await User.findOne({ email: email }).select('+password +isBlocked +role');
+
+        console.log("DB User Data:", {
+            email: user.email,
+            isBlocked: user.isBlocked,
+            tempPassword: user.tempPassword
+        });
 
         // 2️⃣ Strategy 2: Case-Insensitive Match (If exact match fails)
         if (!user) {
             const escapedEmail = escapeRegExp(email);
-            user = await User.findOne({ 
-                email: { $regex: new RegExp(`^\\s*${escapedEmail}\\s*$`, 'i') } 
-            }).select('+password');
+            user = await User.findOne({
+                email: { $regex: new RegExp(`^\\s*${escapedEmail}\\s*$`, 'i') }
+            }).select('+password +isBlocked +role');
         }
 
         if (!user) {
             console.log(`❌ User not found in DB for email: '${email}'`);
             return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (user.isBlocked) {
+            return res.status(403).json({
+                error: 'Your account has been blocked. Please contact admin.'
+            });
         }
 
         // ✅ SAFE ROLE CHECK
