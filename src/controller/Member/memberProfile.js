@@ -125,11 +125,11 @@ export const registerMember = async (req, res) => {
       status: "pending",
     });
 
-    // ✅ Cleanup OTP records
+    //  Cleanup OTP records
     await SignupOtp.deleteOne({ email: body.email });
     await PhoneOtp.deleteOne({ contactNumber: body.contactNumber });
 
-    // 🔔 NOTIFICATION
+    //  NOTIFICATION
     try {
       const newNotification = await Notification.create({
         userType: "admin",
