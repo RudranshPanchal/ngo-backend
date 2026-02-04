@@ -211,11 +211,12 @@ export const registerFundraiser = async (req, res) => {
     }
 
     return res.status(201).json({
+      success: true,
       message: "Fundraiser registered, pending admin approval",
     });
   } catch (err) {
     console.error(" Register Fundraiser Controller Error:", err.message);
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 

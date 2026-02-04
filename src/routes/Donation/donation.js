@@ -75,7 +75,7 @@ router.get("/receipt/:id", requireAuth, async (req, res) => {
                 const receiptData = {
                     ngoName: NGO_80G.name,
                     ngoAddress: NGO_80G.address,
-                    ngoPan: NGO_80G.pan,
+                    ngoPan: NGO_80G.pan, 
                     ngoLogo: NGO_80G.ngoLogo || NGO_80G.logo,
                     registration80G: NGO_80G.registration80G,
                     validity: NGO_80G.validity,
