@@ -125,11 +125,11 @@ export const registerMember = async (req, res) => {
       status: "pending",
     });
 
-    // ✅ Cleanup OTP records
+    //  Cleanup OTP records
     await SignupOtp.deleteOne({ email: body.email });
     await PhoneOtp.deleteOne({ contactNumber: body.contactNumber });
 
-    // 🔔 NOTIFICATION
+    //  NOTIFICATION
     try {
       const newNotification = await Notification.create({
         userType: "admin",
@@ -183,5 +183,3 @@ export const getMyProfile = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
-// ... (updateMemberProfile and updateMemberDocuments logic can also be here, omitted for brevity but included in final export)
