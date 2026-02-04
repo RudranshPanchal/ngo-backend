@@ -59,10 +59,10 @@ export const approveMember = async (req, res) => {
     member.status = "approved";
     member.approvedAt = new Date();
     await member.save();
-    try {
-      await sendEmail(member.email, "Membership Approved", "Your membership has been approved.");
-    } catch (e) {}
-    res.json({ success: true, member });
+    // try {
+    //   await sendEmail(member.email, "Membership Approved", "Your membership has been approved.");
+    // } catch (e) {}
+    // res.json({ success: true, member });
   } catch (err) {
     console.error("approveMember ERROR:", err);
     res.status(500).json({ success: false, message: "Server error" });
@@ -145,15 +145,15 @@ export const updateMemberStatus = async (req, res) => {
         });
       }
 
-      try {
-        await sendMemberWelcomeEmail({
-          toEmail: member.email,
-          fullName: member.fullName,
-          email: member.email,
-          password,
-          memberId: member.memberId,
-        });
-      } catch (e) { console.error("Email error", e); }
+      // try {
+      //   await sendMemberWelcomeEmail({
+      //     toEmail: member.email,
+      //     fullName: member.fullName,
+      //     email: member.email,
+      //     password,
+      //     memberId: member.memberId,
+      //   });
+      // } catch (e) { console.error("Email error", e); }
 
       try {
         const user = await User.findOne({ email: member.email });
@@ -173,9 +173,10 @@ export const updateMemberStatus = async (req, res) => {
         }
       } catch (notifErr) { console.error("Approval Notification Error:", notifErr); }
     } else if (status === "rejected") {
-      try {
-        await sendEmail(member.email, "❌ Your Membership Application is Rejected", `Hello ${member.fullName},\n\nYour membership application has been REJECTED.\nReason: ${reason}`);
-      } catch (e) { console.error("Email error", e); }
+      return res.json({ success: true, member });
+      // try {
+      //   await sendEmail(member.email, "❌ Your Membership Application is Rejected", `Hello ${member.fullName},\n\nYour membership application has been REJECTED.\nReason: ${reason}`);
+      // } catch (e) { console.error("Email error", e); }
     }
 
     return res.json({ success: true, member, generatedPassword: status === "approved" ? password : null });
